@@ -5,7 +5,7 @@ Created on Thu Dec 15 20:36:13 2016
 @author: ASRock
 """
 import sys, random, time
-from PyQt4 import QtOpenGL
+#from PyQt4 import QtOpenGL
 from PyQt4 import QtGui, QtCore
 from UIgame import Ui_MainWindow
 
@@ -23,31 +23,31 @@ class CellItem(QtGui.QGraphicsRectItem):
         self._backup_gen_plag=False #do guzika Back to begining
     
     def changeCell(self):
-        global BOXES
         if self._status == True:
-            BOXES[self._i][self._j]._status_prev = False
-            BOXES[self._i][self._j]._status = False
-            BOXES[self._i][self._j]._plag = False
+            self._status_prev = False
+            self._status = False
+            self._plag = False
         else:
-            BOXES[self._i][self._j]._status_prev = True
-            BOXES[self._i][self._j]._status = True
-            BOXES[self._i][self._j]._plag = False
+            self._status_prev = True
+            self._status = True
+            self._plag = False
     def changeCellPlag(self):
-        global BOXES
         if ( ui.PlagueCheckBox.isChecked()  ):
             if self._plag == True:
-                BOXES[self._i][self._j]._plag = False
+                self._plag=False
+                self._plag = False
             else:
-                BOXES[self._i][self._j]._plag = True
-                BOXES[self._i][self._j]._status_prev = True
-                BOXES[self._i][self._j]._status = True
+                self._plag=True
+                self._plag = True
+                self._status_prev = True
+                self._status = True
     def mousePressEvent(self, event):
         global BOXES
         if event.button() == QtCore.Qt.LeftButton:
             self.changeCell()
         if event.button() == QtCore.Qt.RightButton:
             self.changeCellPlag()
-        ui.DrawChange()
+        ui.DrawChangeSingle(self._i,self._j)
    
 class MeasureTime():
     _time = 0.0
@@ -69,6 +69,9 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
         self.rows = 10
         self.columns = 10
         self.cel_size = 20
+        self.checked = QtGui.QBrush(QtGui.QColor(220,220,240))
+        self.unchecked = QtGui.QBrush(QtGui.QColor(30,30,35))
+        self.plague = QtGui.QBrush(QtGui.QColor(220,100,150))
         self.fps = 1000/self.FPSSpinBox.value()
         self.watch = MeasureTime()
         self.timer = QtCore.QTimer()    #do autogeneracji
@@ -78,14 +81,17 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
         
     def InitUI(self):    #wywolywana tylko raz, ustawia warunku poczatkowe
         global BOXES
+        #self.setWindowIcon(QtGui.QIcon('pythonlogo.png'))
         self.graphicsScene = QtGui.QGraphicsScene()
         self.graphicsScene.setSceneRect(0,0,400,300)
         self.graphicsView.setScene(self.graphicsScene)
-        self.graphicsView.setViewport(QtOpenGL.QGLWidget()) #obliczenia na karcie graficznej
+        #self.graphicsView.setViewport(QtOpenGL.QGLWidget()) #obliczenia na karcie graficznej
         #init cells:
         BOXES = [ [CellItem(self.cel_size*i,self.cel_size*j,self.cel_size,self.cel_size) for i in range(self.rows)] for j in range(self.columns)]
         self.DrawGrid()
         
+        self.EditRules.clicked.connect(self.EditRulesWindow)
+        self.RemovePreset.clicked.connect(self.DeletePreset)
         self.FPSSpinBox.valueChanged.connect(self.UpdateFPS)
         self.StartStop.clicked.connect(self.ToogleAutoGen)
         self.RandomInfection.clicked.connect(self.RandomizePlag)
@@ -102,6 +108,15 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
         self.ScaleIn.clicked.connect(self.scaleViewIn)
         self.ScaleOut.clicked.connect(self.scaleViewOut)
 
+    def DeletePreset(self):
+        choice = QtGui.QMessageBox.question(self, 'Delete preset: bla bla',
+                                            "Are you sure?",
+                                            QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+        if choice == QtGui.QMessageBox.Yes:
+            print("Deleting current preset...")
+            sys.exit()
+        else:
+            pass
     def UpdateFPS(self):    
         self.fps = 1000/self.FPSSpinBox.value()
         self.ToogleAutoGen()
@@ -116,6 +131,10 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
             self.RandomInfection.setEnabled(True)
         else:
             self.RandomInfection.setEnabled(False)
+            global BOXES
+            for i in range(self.rows): #wymaz wszyskie plagi
+                for j in range(self.columns):
+                        BOXES[i][j]._plag = False
     def Randomize(self):
         global BOXES
         for i in range(self.rows):
@@ -166,7 +185,8 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
           for diffY in {-1,0,1}:
             nX = x + diffX
             nY = y + diffY
-            if nX >= 0 and nY >= 0 and nX < self.rows and nY < self.columns:
+            #czy jestem dalej w obszarze tablicy:
+            if nX >= 0 and nY >= 0 and nX < self.rows and nY < self.columns: 
                 if (BOXES[nX][nY]._status_prev==True and not (diffX == diffY == 0)) :
                     neighbors += 1
         #if neighbors>0: 
@@ -193,13 +213,18 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
                         BOXES[i][j]._status = True
                 else: 
                     pass
+                self.DrawChangeSingle(i,j)
                 #miejsce na reguly z plaga
         for i in range(self.rows):     #potrzebne do generacji kolejnego pokolenia
             for j in range(self.columns):
                 BOXES[i][j]._status_prev = BOXES[i][j]._status
-        self.DrawChange()
+        #self.DrawChange()
         self.watch.stop()
-        self.LDelay.setText("Last generation took:\n"+ "{0:.3f}".format(self.watch.getTime()) + " sec.to calculate")
+        if (1/self.FPSSpinBox.value()<self.watch.getTime()):
+            self.LDelay.setText("Last generation took:\n"+ "{0:.3f}".format(self.watch.getTime()) + " sec.to calculate"+"\nNOT reatlime")
+        else:
+            self.LDelay.setText("Last generation took:\n"+ "{0:.3f}".format(self.watch.getTime()) + " sec.to calculate")
+
         
     def NewLife(self):  #zresetuj wszystko oprocz wartosci BOXES._i, BOXES._j
         global BOXES
@@ -216,9 +241,8 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
     def DrawGrid(self):     #wywolywane wtedu gdy zmienia sie rozmiar tablicy
         #todo zmienic definicje tablicy na append i del, dodać remove item i usunac scene.clear()
         global BOXES
-        
         self.graphicsView.setSceneRect(0,0,self.cel_size*self.rows,self.cel_size*self.columns)
-        self.graphicsScene.clear() #potrzebne gdy uswam elementy
+        self.graphicsScene.clear() #potrzebne gdy usuwam elementy
         for i in range(self.rows):
             for j  in range(self.columns):
                 #BOXES = [ [CellItem(self.cel_size*i,self.cel_size*j,self.cel_size,self.cel_size, i, j) for i in range(self.rows)] for j in range(self.columns)]
@@ -228,19 +252,25 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
         self.graphicsView.centerOn(BOXES[self.rows//2][self.columns//2])
         self.DrawChange()
     
-    def DrawChange(self):   #rysuje wszystkie kolory
+    def DrawChange(self):   #rysuje wszystkie kolory dla calej tablicy
         global BOXES
-        checked = QtGui.QBrush(QtGui.QColor(220,220,240))
-        unchecked = QtGui.QBrush(QtGui.QColor(30,30,35))
-        plague = QtGui.QBrush(QtGui.QColor(220,100,150))
         for i in range(self.rows):
             for j  in range(self.columns):
                 if( BOXES[i][j]._status == True):
-                    BOXES[i][j].setBrush(checked)
+                    BOXES[i][j].setBrush(self.checked)
                 else:
-                    BOXES[i][j].setBrush(unchecked)
+                    BOXES[i][j].setBrush(self.unchecked)
                 if( BOXES[i][j]._plag == True ):
-                    BOXES[i][j].setBrush(plague)
+                    BOXES[i][j].setBrush(self.plague)
+                    
+    def DrawChangeSingle(self, i, j):   #rysuje wszystkie kolory dla JEDNEJ komorki
+        global BOXES
+        if( BOXES[i][j]._status == True):
+            BOXES[i][j].setBrush(self.checked)
+        else:
+            BOXES[i][j].setBrush(self.unchecked)
+        if( BOXES[i][j]._plag == True ):
+            BOXES[i][j].setBrush(self.plague)
 
     def SetSquare(self):
         global BOXES
@@ -262,17 +292,59 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
         else:
             self.scaleViewOut()
     def scaleViewIn(self):
-        self.graphicsView.scale(1.1,1.1)
+        self.graphicsView.scale(1.15,1.15)
         #self.graphicsView.centerOn(BOXES[self.rows//2][self.columns//2]) niepotrzebne
     def scaleViewOut(self):
-        self.graphicsView.scale(0.9,0.9)
+        self.graphicsView.scale(0.85,0.85)
         #self.graphicsView.centerOn(BOXES[self.rows//2][self.columns//2])
+    def EditRulesWindow(self):
+        print("jestem w oknie")
+        self.RulesEditor= MinorWindow()
         
-
-
+class MinorWindow(QtGui.QWidget):
+    def __init__(self):
+        print("init okna")
+        super(MinorWindow,self).__init__()
+        self.setGeometry(50, 50, 300, 300)
+        self.btn = QtGui.QPushButton('Dialog', self)
+        self.btn.move(20, 20)
+        self.show()
+        
+class Example(QtGui.QWidget):
+    def __init__(self):
+        print("init Exsample")
+        super(Example, self).__init__()
+        self.kolejne=[]
+        self.initUI()
+        
+    def initUI(self):      
+        self.btn = QtGui.QPushButton('Dialog', self)
+        self.btn.move(20, 20)
+        self.btn.clicked.connect(self.NEXT)
+        self.setGeometry(300, 300, 290, 150)
+        self.setWindowTitle('Input dialog')
+        self.show()
+    def NEXT(self):
+        self.kolejne.append(Example() )
+        
 if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
     #MainWindow = QtGui.QMainWindow()
     ui = Ui_MainWindow()
+    #nowy = Example()
     ui.show()
     sys.exit( app.exec_() )
+#layout = QVBoxLayout(self)
+#layout.add(everything)
+#do skalowania na cały ekran   
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
