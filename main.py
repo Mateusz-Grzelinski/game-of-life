@@ -4,7 +4,7 @@ Created on Thu Dec 15 20:36:13 2016
 
 @author: ASRock
 """
-import sys, random
+import sys, random, time
 from PyQt4 import QtOpenGL
 from PyQt4 import QtGui, QtCore
 from UIgame import Ui_MainWindow
@@ -16,7 +16,7 @@ class CellItem(QtGui.QGraphicsRectItem):
         super().__init__(a,b,c,d)
         self._i= i
         self._j= j               #used for click event
-        self._status=False       
+        self._status=False
         self._status_prev=False  #for counting next self.generation
         self._plag=False
         self._backup_gen=False     #do guzika Back to begining
@@ -49,6 +49,15 @@ class CellItem(QtGui.QGraphicsRectItem):
             self.changeCellPlag()
         ui.DrawChange()
    
+class MeasureTime():
+    _time = 0.0
+    _startTime = 0.0
+    def start(self):
+        self._startTime= time.clock()
+    def stop(self):
+        self._time = time.clock() - self._startTime
+    def getTime(self):
+        return self._time
                    
 class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
     def __init__(self,parent=None):
@@ -60,10 +69,14 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
         self.rows = 10
         self.columns = 10
         self.cel_size = 20
-        self.graph()
+        self.fps = 1000/self.FPSSpinBox.value()
+        self.watch = MeasureTime()
+        self.timer = QtCore.QTimer()    #do autogeneracji
+        self.timer.timeout.connect(self.TickGen)
+        self.InitUI()
         #self.setMouseTracking(True) niepotrzebne
         
-    def graph(self):
+    def InitUI(self):    #wywolywana tylko raz, ustawia warunku poczatkowe
         global BOXES
         self.graphicsScene = QtGui.QGraphicsScene()
         self.graphicsScene.setSceneRect(0,0,400,300)
@@ -73,6 +86,8 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
         BOXES = [ [CellItem(self.cel_size*i,self.cel_size*j,self.cel_size,self.cel_size) for i in range(self.rows)] for j in range(self.columns)]
         self.DrawGrid()
         
+        self.FPSSpinBox.valueChanged.connect(self.UpdateFPS)
+        self.StartStop.clicked.connect(self.ToogleAutoGen)
         self.RandomInfection.clicked.connect(self.RandomizePlag)
         self.RandomStart.clicked.connect(self.Randomize)
         self.ToBegin.clicked.connect(self.ToBeginning)
@@ -84,10 +99,18 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
         self.Tick.clicked.connect(self.TickGen)
         self.graphicsView.setSceneRect(0,0,self.cel_size*self.rows,self.cel_size*self.columns)
         #self.graphicsView.setSceneRect(self.graphicsScene.itemsBoundingRect())
-
         self.ScaleIn.clicked.connect(self.scaleViewIn)
         self.ScaleOut.clicked.connect(self.scaleViewOut)
-    
+
+    def UpdateFPS(self):    
+        self.fps = 1000/self.FPSSpinBox.value()
+        self.ToogleAutoGen()
+        self.ToogleAutoGen()
+    def ToogleAutoGen(self):
+        if self.timer.isActive()==True:
+            self.timer.stop()
+        else:
+            self.timer.start( self.fps )
     def PlagRandomActivate(self):
         if ( self.PlagueCheckBox.isChecked() ):
             self.RandomInfection.setEnabled(True)
@@ -104,7 +127,6 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
                     BOXES[i][j]._status =False
                     BOXES[i][j]._status_prev =False
         self.DrawChange()
-        
     def RandomizePlag(self):
         global BOXES
         for i in range(self.rows):
@@ -118,7 +140,7 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
     def ToBeginning(self):
         global BOXES
         self.generation=0
-        self.LGeneration.setText("Generacja: "+str(self.generation) )
+        self.LGeneration.setText("Generation: "+str(self.generation) )
         for i in range(self.rows):
             for j in range(self.columns):
                 BOXES[i][j]._status =  BOXES[i][j]._backup_gen
@@ -153,14 +175,12 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
         
     def TickGen(self):
         global BOXES
+        self.watch.start()
         if (self.generation==0): #ustawianie pkt powrotu Back to beginning 
-            #_backup_gen = [[False for j in range(self.columns)] for i in range(self.rows)]
-            #BOXES[i][j]._backup_gen_plag = [[False for j in range(self.columns)] for i in range(self.rows)]
             for i in range(self.rows):
                 for j in range(self.columns):
                     BOXES[i][j]._backup_gen = BOXES[i][j]._status 
                     BOXES[i][j]._backup_gen_plag = BOXES[i][j]._plag
-                    
         self.generation+=1
         self.LGeneration.setText("Generation: "+str(self.generation) )
         for i in range(self.rows):
@@ -174,16 +194,17 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
                 else: 
                     pass
                 #miejsce na reguly z plaga
-                
         for i in range(self.rows):     #potrzebne do generacji kolejnego pokolenia
             for j in range(self.columns):
                 BOXES[i][j]._status_prev = BOXES[i][j]._status
         self.DrawChange()
+        self.watch.stop()
+        self.LDelay.setText("Last generation took:\n"+ "{0:.3f}".format(self.watch.getTime()) + " sec.to calculate")
         
     def NewLife(self):  #zresetuj wszystko oprocz wartosci BOXES._i, BOXES._j
         global BOXES
         self.generation=0
-        self.LGeneration.setText("Generacja: "+str(self.generation) )
+        self.LGeneration.setText("Generation: "+str(self.generation) )
         for i in range(self.rows):
             for j  in range(self.columns):
                 BOXES[i][j]._status = False
@@ -242,10 +263,10 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
             self.scaleViewOut()
     def scaleViewIn(self):
         self.graphicsView.scale(1.1,1.1)
-        self.graphicsView.centerOn(BOXES[self.rows//2][self.columns//2])
+        #self.graphicsView.centerOn(BOXES[self.rows//2][self.columns//2]) niepotrzebne
     def scaleViewOut(self):
         self.graphicsView.scale(0.9,0.9)
-        self.graphicsView.centerOn(BOXES[self.rows//2][self.columns//2])
+        #self.graphicsView.centerOn(BOXES[self.rows//2][self.columns//2])
         
 
 

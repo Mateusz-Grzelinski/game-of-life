@@ -139,7 +139,7 @@ class Ui_MainWindow(object):
         self.FPSSpinBox.setMinimumSize(QtCore.QSize(50, 50))
         self.FPSSpinBox.setReadOnly(False)
         self.FPSSpinBox.setKeyboardTracking(False)
-        self.FPSSpinBox.setMinimum(0.01)
+        self.FPSSpinBox.setMinimum(0.001)
         self.FPSSpinBox.setMaximum(50.0)
         self.FPSSpinBox.setSingleStep(0.1)
         self.FPSSpinBox.setProperty("value", 1.0)
