@@ -12,13 +12,15 @@ from UIgame import Ui_MainWindow
 
 
 class CellItem(QtGui.QGraphicsRectItem):
-    _i= 0
-    _j=0                #used for click event
-    _status=False       
-    _status_prev=False  #for counting next self.generation
-    _plag=False
-    backup_gen=False     #do guzika Back to begining
-    backup_gen_plag=False #do guzika Back to begining
+    def __init__(self, a,b,c,d,i=0,j=0 ):
+        super().__init__(a,b,c,d)
+        self._i= i
+        self._j= j               #used for click event
+        self._status=False       
+        self._status_prev=False  #for counting next self.generation
+        self._plag=False
+        self._backup_gen=False     #do guzika Back to begining
+        self._backup_gen_plag=False #do guzika Back to begining
     
     def changeCell(self):
         global BOXES
@@ -95,20 +97,20 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
         global BOXES
         for i in range(self.rows):
             for j in range(self.columns):
-                if (random.randint(-50,30)<0): #ustawianie prawdopodobienstwa
-                    BOXES[i][j]._status =False
-                    BOXES[i][j]._status_prev =False
-                else:
+                if (random.randint(-50,30)>0): #ustawianie prawdopodobienstwa
                     BOXES[i][j]._status = True
                     BOXES[i][j]._status_prev = True
+                else:
+                    BOXES[i][j]._status =False
+                    BOXES[i][j]._status_prev =False
         self.DrawChange()
         
     def RandomizePlag(self):
         global BOXES
         for i in range(self.rows):
             for j in range(self.columns):
-                if (random.randint(-50,30)<0):
-                    BOXES[i][j]._plag =False
+                if (random.randint(-50,30)>0 and BOXES[i][j]._status==True):
+                    BOXES[i][j]._plag =True
                 else:
                     BOXES[i][j]._plag = False
         self.DrawChange()
@@ -119,9 +121,9 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
         self.LGeneration.setText("Generacja: "+str(self.generation) )
         for i in range(self.rows):
             for j in range(self.columns):
-                BOXES[i][j]._status =  BOXES[i][j].backup_gen
-                BOXES[i][j]._status_prev = BOXES[i][j].backup_gen
-                BOXES[i][j]._plag = BOXES[i][j].backup_gen_plag
+                BOXES[i][j]._status =  BOXES[i][j]._backup_gen
+                BOXES[i][j]._status_prev = BOXES[i][j]._backup_gen
+                BOXES[i][j]._plag = BOXES[i][j]._backup_gen_plag
         self.DrawChange()
         
     def UpdateValues(self):
@@ -132,7 +134,7 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
             self.ColumnsSpinBox.setValue(self.columns)
         else:
             self.columns = self.ColumnsSpinBox.value()
-        BOXES = [ [CellItem(self.cel_size*i,self.cel_size*j,self.cel_size,self.cel_size) for j in range(self.columns)] for i in range(self.rows)]
+        BOXES = [ [CellItem(self.cel_size*i,self.cel_size*j,self.cel_size,self.cel_size, i, j) for i in range(self.rows)] for j in range(self.columns)]
         self.DrawGrid()
         
     def getAmountOfNeighbs(self,x,y):
@@ -152,12 +154,12 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
     def TickGen(self):
         global BOXES
         if (self.generation==0): #ustawianie pkt powrotu Back to beginning 
-            #backup_gen = [[False for j in range(self.columns)] for i in range(self.rows)]
-            #BOXES[i][j].backup_gen_plag = [[False for j in range(self.columns)] for i in range(self.rows)]
+            #_backup_gen = [[False for j in range(self.columns)] for i in range(self.rows)]
+            #BOXES[i][j]._backup_gen_plag = [[False for j in range(self.columns)] for i in range(self.rows)]
             for i in range(self.rows):
                 for j in range(self.columns):
-                    BOXES[i][j].backup_gen = BOXES[i][j]._status 
-                    BOXES[i][j].backup_gen_plag = BOXES[i][j]._plag
+                    BOXES[i][j]._backup_gen = BOXES[i][j]._status 
+                    BOXES[i][j]._backup_gen_plag = BOXES[i][j]._plag
                     
         self.generation+=1
         self.LGeneration.setText("Generation: "+str(self.generation) )
@@ -198,8 +200,8 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
         self.graphicsScene.clear() #potrzebne gdy uswam elementy
         for i in range(self.rows):
             for j  in range(self.columns):
-                #BOXES[i][j] = CellItem(self.cel_size*i,self.cel_size*j,self.cel_size,self.cel_size)
-                BOXES[i][j]._i = i
+                #BOXES = [ [CellItem(self.cel_size*i,self.cel_size*j,self.cel_size,self.cel_size, i, j) for i in range(self.rows)] for j in range(self.columns)]
+                BOXES[i][j]._i= i 
                 BOXES[i][j]._j=j
                 self.graphicsScene.addItem(BOXES[i][j])
         self.graphicsView.centerOn(BOXES[self.rows//2][self.columns//2])
@@ -225,12 +227,12 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
             self.columns = self.rows
             self.LColums.setEnabled(False) 
             self.ColumnsSpinBox.setEnabled(False)
-            BOXES = [ [CellItem(self.cel_size*i,self.cel_size*j,self.cel_size,self.cel_size) for j in range(self.columns)] for i in range(self.rows)]
+            BOXES = [ [CellItem(self.cel_size*i,self.cel_size*j,self.cel_size,self.cel_size, i, j) for i in range(self.rows)] for j in range(self.columns)]
             self.DrawGrid()
         else:
             self.LColums.setEnabled(True) 
             self.ColumnsSpinBox.setEnabled(True)
-            BOXES = [ [CellItem(self.cel_size*i,self.cel_size*j,self.cel_size,self.cel_size) for j in range(self.columns)] for i in range(self.rows)]
+            BOXES = [ [CellItem(self.cel_size*i,self.cel_size*j,self.cel_size,self.cel_size, i, j) for i in range(self.rows)] for j in range(self.columns)]
             self.DrawGrid()
             
     def wheelEvent(self,event):
