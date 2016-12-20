@@ -123,6 +123,7 @@ class Ui_RuleEditorWidget(object):
 " 1,2,5 cell dies when surrounded by 1,2,5 neighours\n"
 " 7 ,4,2- cell dies when surrounded by 2,4 or 7 neighours\n"
 " 4a5t - invalid input", None))
+        
 
 
 if __name__ == "__main__":

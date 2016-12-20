@@ -7,8 +7,8 @@ Created on Thu Dec 15 20:36:13 2016
 import sys, random, time
 #from PyQt4 import QtOpenGL
 from PyQt4 import QtGui, QtCore
-from UIgame import Ui_MainWindow
-
+from GameUI20 import Ui_MainWindow
+from WindowRules1 import Ui_RuleEditorWidget
 
 
 class CellItem(QtGui.QGraphicsRectItem):
@@ -60,11 +60,12 @@ class MeasureTime():
         return self._time
                    
 class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
-    def __init__(self,parent=None):
+    def __init__(self):
         global BOXES
         super(Ui_MainWindow,self).__init__()
         self.setupUi(self)
         self.retranslateUi(self)
+        
         self.generation = 0
         self.rows = 10
         self.columns = 10
@@ -293,14 +294,25 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
             self.scaleViewOut()
     def scaleViewIn(self):
         self.graphicsView.scale(1.15,1.15)
-        #self.graphicsView.centerOn(BOXES[self.rows//2][self.columns//2]) niepotrzebne
     def scaleViewOut(self):
         self.graphicsView.scale(0.85,0.85)
-        #self.graphicsView.centerOn(BOXES[self.rows//2][self.columns//2])
+        
     def EditRulesWindow(self):
         print("jestem w oknie")
-        self.RulesEditor= MinorWindow()
-        
+        self.WindowRulesEditor = Ui_RuleEditorWidget()
+       
+class Ui_RuleEditorWidget(QtGui.QWidget,Ui_RuleEditorWidget):
+    def __init__(self):
+        super(Ui_RuleEditorWidget,self).__init__()
+        print("super")
+        self.setupUi(self)
+        self.retranslateUi(self)
+        self.move(0,550)
+        self.show()
+    
+    
+    
+'''
 class MinorWindow(QtGui.QWidget):
     def __init__(self):
         print("init okna")
@@ -309,29 +321,14 @@ class MinorWindow(QtGui.QWidget):
         self.btn = QtGui.QPushButton('Dialog', self)
         self.btn.move(20, 20)
         self.show()
-        
-class Example(QtGui.QWidget):
-    def __init__(self):
-        print("init Exsample")
-        super(Example, self).__init__()
-        self.kolejne=[]
-        self.initUI()
-        
-    def initUI(self):      
-        self.btn = QtGui.QPushButton('Dialog', self)
-        self.btn.move(20, 20)
-        self.btn.clicked.connect(self.NEXT)
-        self.setGeometry(300, 300, 290, 150)
-        self.setWindowTitle('Input dialog')
-        self.show()
-    def NEXT(self):
-        self.kolejne.append(Example() )
+'''
+
         
 if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
     #MainWindow = QtGui.QMainWindow()
     ui = Ui_MainWindow()
-    #nowy = Example()
+    #nowy = Ui_RuleEditorWidget()
     ui.show()
     sys.exit( app.exec_() )
 #layout = QVBoxLayout(self)
