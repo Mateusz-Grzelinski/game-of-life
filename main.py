@@ -59,14 +59,14 @@ class MeasureTime():
         return self._time
                    
 class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
+    RulesTabDies = "014567"   #ktore komorki umieraj, a musza tu byc te zmienne, bez self.
+    RulesTabBorn = "3"        #ktore komorki rodza sie  
     def __init__(self):
         global BOXES
         super(MainWindow,self).__init__()
         self.setupUi(self)
         self.retranslateUi(self)
         
-        self.RulesTabDies = "014567"   #ktore komorki umieraja
-        self.RulesTabBorn = "3"        #ktore komorki rodza sie  
         self.generation = 0
         self.rows = 10
         self.columns = 10
@@ -78,16 +78,12 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         self.watch = MeasureTime()
         self.timer = QtCore.QTimer()    #do autogeneracji
         self.timer.timeout.connect(self.TickGen)
-        self.InitUI()
         #self.setMouseTracking(True) niepotrzebne
-        
-    def InitUI(self):    #wywolywana tylko raz, ustawia warunku poczatkowe
-        global BOXES
         #self.setWindowIcon(QtGui.QIcon('pythonlogo.png'))
         self.graphicsScene = QtGui.QGraphicsScene()
         self.graphicsScene.setSceneRect(0,0,400,300)
         self.graphicsView.setScene(self.graphicsScene)
-        #self.graphicsView.setViewport(QtOpenGL.QGLWidget()) #obliczenia na karcie graficznej
+        #self.graphicsView.setViewport(QtOpenGL.QGLWidget()) #obliczenia na karcie graficznej- nie zmienia duzo
         #init cells:
         BOXES = [ [CellItem(self.cel_size*i,self.cel_size*j,self.cel_size,self.cel_size) for i in range(self.rows)] for j in range(self.columns)]
         self.DrawGrid()
@@ -110,6 +106,10 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         self.ScaleIn.clicked.connect(self.scaleViewIn)
         self.ScaleOut.clicked.connect(self.scaleViewOut)
 
+        
+        
+        
+        
     def DeletePreset(self):
         choice = QtGui.QMessageBox.question(self, 'Delete preset: bla bla',
                                             "Are you sure?",
@@ -308,31 +308,28 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         #self.WindowRulesEditor.RulesTabBorn 
         #self.WindowRulesEditor.RulesTabDies 
         
-class RuleEditorWidget( Ui_RuleEditorWidget, MainWindow): 
+class RuleEditorWidget( Ui_RuleEditorWidget,MainWindow): 
     #dziedziczy z qwidget aby postawic okno, Ui_RuleEditorWidget aby postawic UI,
     #z MainWindow aby miec dostep do RulesTabBorn, RulesTabDies
     def __init__(self):
-        #super(RuleEditorWidget,self).__init__()
+        #super(RuleEditorWidget,self).__init__() możzna tez tak jak nizej
         QtGui.QWidget.__init__(self)
         self.setupUi(self)
         self.retranslateUi(self)
         self.move(0,550)
-        print("Iam in")
         self.CellBornLineEdit.setText( self.CellBornLineEdit.text() )
         self.CellDiesLineEdit.setText( self.CellDiesLineEdit.text() )
         self.CellBornLineEdit.textChanged.connect( self.UpdateBorn )
         self.CellDiesLineEdit.textChanged.connect( self.UpdateDies )
-        print("Iam in")
+        print("I'm in")
         self.show()
-    
     def UpdateBorn(self):
-        #getattr(Ui_MainWindow, "UpdateRules")
-        MainWindow.RulesTabBorn = self.CellBornLineEdit.text()
-        print(MainWindow.RulesTabBorn)
+        print(self.CellBornLineEdit.text())
+        ui.RulesTabBorn = self.CellBornLineEdit.text()
         #return self.CellBornLineEdit.text()
     def UpdateDies(self):
+        print( self.CellDiesLineEdit.text())
         MainWindow.RulesTabDies = self.CellDiesLineEdit.text()
-        print(MainWindow.RulesTabDies)
         #return self.CellDiesLineEdit.text()
         #self.WindowRulesEditor.RulesTabBorn zmienic warunek w klasie MainWindow
     
@@ -340,9 +337,7 @@ class RuleEditorWidget( Ui_RuleEditorWidget, MainWindow):
         
 if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
-    #MainWindow = QtGui.QMainWindow()
     ui = MainWindow()
-    #nowy = Ui_RuleEditorWidget()
     ui.show()
     sys.exit( app.exec_() )
 #layout = QVBoxLayout(self)
