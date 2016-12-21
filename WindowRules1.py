@@ -22,7 +22,7 @@ except AttributeError:
     def _translate(context, text, disambig):
         return QtGui.QApplication.translate(context, text, disambig)
 
-class Ui_RuleEditorWidget(object):
+class Ui_RuleEditorWidget():
     def setupUi(self, RuleEditorWidget):
         RuleEditorWidget.setObjectName(_fromUtf8("RuleEditorWidget"))
         RuleEditorWidget.resize(400, 340)

@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Dec 15 20:36:13 2016
-
-@author: ASRock
+@author: Mateusz Grzeliński
 """
 import sys, random, time
 #from PyQt4 import QtOpenGL
@@ -59,7 +58,7 @@ class MeasureTime():
     def getTime(self):
         return self._time
                    
-class MainWindow(QtGui.QMainWindow, Ui_MainWindow):
+class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
     def __init__(self):
         global BOXES
         super(MainWindow,self).__init__()
@@ -303,36 +302,40 @@ class MainWindow(QtGui.QMainWindow, Ui_MainWindow):
     def closeEvent(self, event):
         self.WindowRulesEditor.close()
     def EditRulesWindow(self):
+        
         self.WindowRulesEditor = RuleEditorWidget()
         #self.RulesTabDies
         #self.WindowRulesEditor.RulesTabBorn 
         #self.WindowRulesEditor.RulesTabDies 
         
-class RuleEditorWidget(QtGui.QWidget, Ui_RuleEditorWidget): 
+class RuleEditorWidget( Ui_RuleEditorWidget, MainWindow): 
     #dziedziczy z qwidget aby postawic okno, Ui_RuleEditorWidget aby postawic UI,
     #z MainWindow aby miec dostep do RulesTabBorn, RulesTabDies
     def __init__(self):
-        super(RuleEditorWidget,self).__init__()
+        #super(RuleEditorWidget,self).__init__()
+        QtGui.QWidget.__init__(self)
         self.setupUi(self)
         self.retranslateUi(self)
         self.move(0,550)
+        print("Iam in")
         self.CellBornLineEdit.setText( self.CellBornLineEdit.text() )
         self.CellDiesLineEdit.setText( self.CellDiesLineEdit.text() )
-        #self.CellBornLineEdit.textChanged.connect( self.UpdateBorn )
-        #self.CellDiesLineEdit.textChanged.connect( self.UpdateDies )
+        self.CellBornLineEdit.textChanged.connect( self.UpdateBorn )
+        self.CellDiesLineEdit.textChanged.connect( self.UpdateDies )
+        print("Iam in")
         self.show()
-    '''
+    
     def UpdateBorn(self):
         #getattr(Ui_MainWindow, "UpdateRules")
         MainWindow.RulesTabBorn = self.CellBornLineEdit.text()
-        print(self.RulesTabBorn)
+        print(MainWindow.RulesTabBorn)
         #return self.CellBornLineEdit.text()
     def UpdateDies(self):
         MainWindow.RulesTabDies = self.CellDiesLineEdit.text()
         print(MainWindow.RulesTabDies)
         #return self.CellDiesLineEdit.text()
         #self.WindowRulesEditor.RulesTabBorn zmienic warunek w klasie MainWindow
-    '''
+    
 
         
 if __name__ == "__main__":
