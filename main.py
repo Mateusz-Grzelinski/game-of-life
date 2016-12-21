@@ -59,13 +59,15 @@ class MeasureTime():
     def getTime(self):
         return self._time
                    
-class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
+class MainWindow(QtGui.QMainWindow, Ui_MainWindow):
     def __init__(self):
         global BOXES
-        super(Ui_MainWindow,self).__init__()
+        super(MainWindow,self).__init__()
         self.setupUi(self)
         self.retranslateUi(self)
         
+        self.RulesTabDies = "014567"   #ktore komorki umieraja
+        self.RulesTabBorn = "3"        #ktore komorki rodza sie  
         self.generation = 0
         self.rows = 10
         self.columns = 10
@@ -159,6 +161,7 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
         
     def ToBeginning(self):
         global BOXES
+        self.timer.stop()
         self.generation=0
         self.LGeneration.setText("Generation: "+str(self.generation) )
         for i in range(self.rows):
@@ -190,11 +193,13 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
             if nX >= 0 and nY >= 0 and nX < self.rows and nY < self.columns: 
                 if (BOXES[nX][nY]._status_prev==True and not (diffX == diffY == 0)) :
                     neighbors += 1
-        #if neighbors>0: 
-        #    print (x,y,neighbors)
+        if neighbors>0: 
+            print ("sasiad: ",x,y,neighbors)
         return neighbors
         
     def TickGen(self):
+        print("Born:", self.RulesTabBorn)
+        print("Dies: ", self.RulesTabDies)
         global BOXES
         self.watch.start()
         if (self.generation==0): #ustawianie pkt powrotu Back to beginning 
@@ -204,18 +209,16 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
                     BOXES[i][j]._backup_gen_plag = BOXES[i][j]._plag
         self.generation+=1
         self.LGeneration.setText("Generation: "+str(self.generation) )
-        for i in range(self.rows):
+        
+        for i in range(self.rows):      #dodac reguly dot plagi!!
             for j in range(self.columns):
                 neighbours=self.getAmountOfNeighbs(i,j)
-                if ( not self.PlagueCheckBox.isChecked()  ):
-                    if  BOXES[i][j]._status_prev == True and (neighbours < 2 or neighbours > 3):
-                        BOXES[i][j]._status  = False
-                    if BOXES[i][j]._status_prev == False and neighbours == 3:
-                        BOXES[i][j]._status = True
-                else: 
-                    pass
+                if  BOXES[i][j]._status_prev == True and (str(neighbours) in self.RulesTabDies):
+                    BOXES[i][j]._status  = False
+                if BOXES[i][j]._status_prev == False and (str(neighbours) in self.RulesTabBorn):
+                    BOXES[i][j]._status = True
                 self.DrawChangeSingle(i,j)
-                #miejsce na reguly z plaga
+                
         for i in range(self.rows):     #potrzebne do generacji kolejnego pokolenia
             for j in range(self.columns):
                 BOXES[i][j]._status_prev = BOXES[i][j]._status
@@ -227,8 +230,9 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
             self.LDelay.setText("Last generation took:\n"+ "{0:.3f}".format(self.watch.getTime()) + " sec.to calculate")
 
         
-    def NewLife(self):  #zresetuj wszystko oprocz wartosci BOXES._i, BOXES._j
+    def NewLife(self):  #zresetuj wszystko oprocz wartosci 
         global BOXES
+        self.timer.stop()
         self.generation=0
         self.LGeneration.setText("Generation: "+str(self.generation) )
         for i in range(self.rows):
@@ -296,38 +300,45 @@ class Ui_MainWindow(QtGui.QMainWindow, Ui_MainWindow):
         self.graphicsView.scale(1.15,1.15)
     def scaleViewOut(self):
         self.graphicsView.scale(0.85,0.85)
-        
+    def closeEvent(self, event):
+        self.WindowRulesEditor.close()
     def EditRulesWindow(self):
-        print("jestem w oknie")
-        self.WindowRulesEditor = Ui_RuleEditorWidget()
-       
-class Ui_RuleEditorWidget(QtGui.QWidget,Ui_RuleEditorWidget):
+        self.WindowRulesEditor = RuleEditorWidget()
+        #self.RulesTabDies
+        #self.WindowRulesEditor.RulesTabBorn 
+        #self.WindowRulesEditor.RulesTabDies 
+        
+class RuleEditorWidget(QtGui.QWidget, Ui_RuleEditorWidget): 
+    #dziedziczy z qwidget aby postawic okno, Ui_RuleEditorWidget aby postawic UI,
+    #z MainWindow aby miec dostep do RulesTabBorn, RulesTabDies
     def __init__(self):
-        super(Ui_RuleEditorWidget,self).__init__()
-        print("super")
+        super(RuleEditorWidget,self).__init__()
         self.setupUi(self)
         self.retranslateUi(self)
         self.move(0,550)
+        self.CellBornLineEdit.setText( self.CellBornLineEdit.text() )
+        self.CellDiesLineEdit.setText( self.CellDiesLineEdit.text() )
+        #self.CellBornLineEdit.textChanged.connect( self.UpdateBorn )
+        #self.CellDiesLineEdit.textChanged.connect( self.UpdateDies )
         self.show()
-    
-    
-    
-'''
-class MinorWindow(QtGui.QWidget):
-    def __init__(self):
-        print("init okna")
-        super(MinorWindow,self).__init__()
-        self.setGeometry(50, 50, 300, 300)
-        self.btn = QtGui.QPushButton('Dialog', self)
-        self.btn.move(20, 20)
-        self.show()
-'''
+    '''
+    def UpdateBorn(self):
+        #getattr(Ui_MainWindow, "UpdateRules")
+        MainWindow.RulesTabBorn = self.CellBornLineEdit.text()
+        print(self.RulesTabBorn)
+        #return self.CellBornLineEdit.text()
+    def UpdateDies(self):
+        MainWindow.RulesTabDies = self.CellDiesLineEdit.text()
+        print(MainWindow.RulesTabDies)
+        #return self.CellDiesLineEdit.text()
+        #self.WindowRulesEditor.RulesTabBorn zmienic warunek w klasie MainWindow
+    '''
 
         
 if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
     #MainWindow = QtGui.QMainWindow()
-    ui = Ui_MainWindow()
+    ui = MainWindow()
     #nowy = Ui_RuleEditorWidget()
     ui.show()
     sys.exit( app.exec_() )
