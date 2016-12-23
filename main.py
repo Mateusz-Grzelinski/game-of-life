@@ -59,7 +59,7 @@ class MeasureTime():
         return self._time
                    
 class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
-    RulesTabDies = "014567"   #ktore komorki umieraj, a musza tu byc te zmienne, bez self.
+    RulesTabDies = "0,1,4,5,6,7"   #ktore komorki umieraj, a musza tu byc te zmienne, bez self.
     RulesTabBorn = "3"        #ktore komorki rodza sie  
     def __init__(self):
         global BOXES
@@ -321,14 +321,20 @@ class RuleEditorWidget( Ui_RuleEditorWidget,MainWindow):
         self.CellDiesLineEdit.setText( self.CellDiesLineEdit.text() )
         self.CellBornLineEdit.textChanged.connect( self.UpdateBorn )
         self.CellDiesLineEdit.textChanged.connect( self.UpdateDies )
-        print("I'm in")
+        #print("I'm in")
         self.show()
     def UpdateBorn(self):
-        print(self.CellBornLineEdit.text())
-        ui.RulesTabBorn = self.CellBornLineEdit.text()
+        #print(self.CellBornLineEdit.text())
+        for i in range(0,8): #sprawdza walidacje wprowadzonych danych
+            if (str(i) in self.CellBornLineEdit.text() and str(i) in self.CellDiesLineEdit.text()):
+                self.CellBornLineEdit.setText(MainWindow.RulesTabBorn)
+        MainWindow.RulesTabBorn = self.CellBornLineEdit.text()
         #return self.CellBornLineEdit.text()
     def UpdateDies(self):
-        print( self.CellDiesLineEdit.text())
+        #print( self.CellDiesLineEdit.text())
+        for i in range(0,8):
+            if (str(i) in self.CellBornLineEdit.text() and str(i) in self.CellDiesLineEdit.text()):
+                self.CellDiesLineEdit.setText(MainWindow.RulesTabDies)
         MainWindow.RulesTabDies = self.CellDiesLineEdit.text()
         #return self.CellDiesLineEdit.text()
         #self.WindowRulesEditor.RulesTabBorn zmienic warunek w klasie MainWindow
