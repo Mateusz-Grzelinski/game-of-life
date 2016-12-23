@@ -25,6 +25,7 @@ except AttributeError:
 class Ui_RuleEditorWidget():
     def setupUi(self, RuleEditorWidget):
         RuleEditorWidget.setObjectName(_fromUtf8("RuleEditorWidget"))
+        RuleEditorWidget.setWindowIcon(QtGui.QIcon("icon.png"))
         RuleEditorWidget.resize(400, 340)
         font = QtGui.QFont()
         font.setPointSize(12)
@@ -59,10 +60,10 @@ class Ui_RuleEditorWidget():
         self.LCellDies.setAlignment(QtCore.Qt.AlignCenter)
         self.LCellDies.setObjectName(_fromUtf8("LCellDies"))
         self.gridLayout.addWidget(self.LCellDies, 3, 0, 1, 1)
-        self.RulePresetnComboBox = QtGui.QComboBox(self.gridLayoutWidget)
-        self.RulePresetnComboBox.setEditable(False)
-        self.RulePresetnComboBox.setObjectName(_fromUtf8("RulePresetnComboBox"))
-        self.gridLayout.addWidget(self.RulePresetnComboBox, 0, 1, 1, 1)
+        self.RulePresetsComboBox = QtGui.QComboBox(self.gridLayoutWidget)
+        self.RulePresetsComboBox.setEditable(False)
+        self.RulePresetsComboBox.setObjectName(_fromUtf8("RulePresetsComboBox"))
+        self.gridLayout.addWidget(self.RulePresetsComboBox, 0, 1, 1, 1)
         self.CellBornLineEdit = QtGui.QLineEdit(self.gridLayoutWidget)
         self.CellBornLineEdit.setMaxLength(50)
         self.CellBornLineEdit.setObjectName(_fromUtf8("CellBornLineEdit"))
@@ -92,7 +93,7 @@ class Ui_RuleEditorWidget():
         self.gridLayoutWidget.raise_()
         self.LCellBorn_2.raise_()
         self.LCellBorn.setBuddy(self.CellBornLineEdit)
-        self.LRulePresets.setBuddy(self.RulePresetnComboBox)
+        self.LRulePresets.setBuddy(self.RulePresetsComboBox)
         self.LCellDies.setBuddy(self.CellDiesLineEdit)
         self.LCellBorn_2.setBuddy(self.CellBornLineEdit)
 

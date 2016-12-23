@@ -3,7 +3,7 @@
 Created on Thu Dec 15 20:36:13 2016
 @author: Mateusz Grzeliński
 """
-import sys, random, time
+import sys, random, os, time, json
 #from PyQt4 import QtOpenGL
 from PyQt4 import QtGui, QtCore
 from GameUI20 import Ui_MainWindow
@@ -25,18 +25,14 @@ class CellItem(QtGui.QGraphicsRectItem):
         if self._status == True:
             self._status_prev = False
             self._status = False
-            self._plag = False
         else:
             self._status_prev = True
             self._status = True
-            self._plag = False
     def changeCellPlag(self):
         if ( ui.PlagueCheckBox.isChecked()  ):
             if self._plag == True:
-                self._plag=False
                 self._plag = False
             else:
-                self._plag=True
                 self._plag = True
                 self._status_prev = True
                 self._status = True
@@ -79,7 +75,6 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         self.timer = QtCore.QTimer()    #do autogeneracji
         self.timer.timeout.connect(self.TickGen)
         #self.setMouseTracking(True) niepotrzebne
-        #self.setWindowIcon(QtGui.QIcon('pythonlogo.png'))
         self.graphicsScene = QtGui.QGraphicsScene()
         self.graphicsScene.setSceneRect(0,0,400,300)
         self.graphicsView.setScene(self.graphicsScene)
@@ -106,9 +101,6 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         self.ScaleIn.clicked.connect(self.scaleViewIn)
         self.ScaleOut.clicked.connect(self.scaleViewOut)
 
-        
-        
-        
         
     def DeletePreset(self):
         choice = QtGui.QMessageBox.question(self, 'Delete preset: bla bla',
@@ -197,8 +189,6 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         return neighbors
         
     def TickGen(self):
-        print("Born:", self.RulesTabBorn)
-        print("Dies: ", self.RulesTabDies)
         global BOXES
         self.watch.start()
         if (self.generation==0): #ustawianie pkt powrotu Back to beginning 
@@ -222,7 +212,7 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
             for j in range(self.columns):
                 BOXES[i][j]._status_prev = BOXES[i][j]._status
         #self.DrawChange()
-        self.watch.stop()
+        self.watch.stop()    
         if (1/self.FPSSpinBox.value()<self.watch.getTime()):
             self.LDelay.setText("Last generation took:\n"+ "{0:.3f}".format(self.watch.getTime()) + " sec.to calculate"+"\nNOT reatlime")
         else:
@@ -302,18 +292,15 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
     def closeEvent(self, event):
         self.WindowRulesEditor.close()
     def EditRulesWindow(self):
-        
         self.WindowRulesEditor = RuleEditorWidget()
-        #self.RulesTabDies
-        #self.WindowRulesEditor.RulesTabBorn 
-        #self.WindowRulesEditor.RulesTabDies 
         
-class RuleEditorWidget( Ui_RuleEditorWidget,MainWindow): 
+class RuleEditorWidget( Ui_RuleEditorWidget, MainWindow): 
     #dziedziczy z qwidget aby postawic okno, Ui_RuleEditorWidget aby postawic UI,
-    #z MainWindow aby miec dostep do RulesTabBorn, RulesTabDies
+    #z MainWindow aby miec dostep do RulesTabBorn, RulesTabDies 
     def __init__(self):
         #super(RuleEditorWidget,self).__init__() możzna tez tak jak nizej
         QtGui.QWidget.__init__(self)
+        
         self.setupUi(self)
         self.retranslateUi(self)
         self.move(0,550)
@@ -321,26 +308,69 @@ class RuleEditorWidget( Ui_RuleEditorWidget,MainWindow):
         self.CellDiesLineEdit.setText( self.CellDiesLineEdit.text() )
         self.CellBornLineEdit.textChanged.connect( self.UpdateBorn )
         self.CellDiesLineEdit.textChanged.connect( self.UpdateDies )
-        #print("I'm in")
+        self.RemovePreset.clicked.connect(self.DeleteRulesPreset)
+        self.AddPreset.clicked.connect(self.AddRulesPresetPopup)
+        self.LoadRulesNames()
+        self.RulePresetsComboBox.currentIndexChanged.connect(self.UpdateRules)
         self.show()
     def UpdateBorn(self):
-        #print(self.CellBornLineEdit.text())
         for i in range(0,8): #sprawdza walidacje wprowadzonych danych
             if (str(i) in self.CellBornLineEdit.text() and str(i) in self.CellDiesLineEdit.text()):
                 self.CellBornLineEdit.setText(MainWindow.RulesTabBorn)
         MainWindow.RulesTabBorn = self.CellBornLineEdit.text()
-        #return self.CellBornLineEdit.text()
     def UpdateDies(self):
-        #print( self.CellDiesLineEdit.text())
         for i in range(0,8):
             if (str(i) in self.CellBornLineEdit.text() and str(i) in self.CellDiesLineEdit.text()):
                 self.CellDiesLineEdit.setText(MainWindow.RulesTabDies)
         MainWindow.RulesTabDies = self.CellDiesLineEdit.text()
-        #return self.CellDiesLineEdit.text()
-        #self.WindowRulesEditor.RulesTabBorn zmienic warunek w klasie MainWindow
-    
-
+    def LoadRulesNames(self): #add presets to ComboBox
+        for file in os.listdir("RulePresets"):
+            #print(os.path.splitext(file)[0] ) #nazwy plikow bez rozszerzen
+            self.RulePresetsComboBox.addItem(os.path.splitext(file)[0])
+    def AddRulesPresetPopup(self):
+        filename, ok = QtGui.QInputDialog.getText(self, 'Save Rule Preset', 'Enter preset name:')
+        flag=True 
+        if ok: #jesli wprowadzono dane
+            for file in os.listdir("RulePresets"): #sprawdz czy plik juz istnieje
+                if filename in os.path.splitext(file)[0] :
+                    flag=False
+                    msg = QtGui.QMessageBox()
+                    msg.setIcon(QtGui.QMessageBox.Warning)
+                    msg.setWindowTitle("Error!")
+                    msg.setText("Preset not saved!\n\
+                                File with this name arleady exsists or name specified incorrectly")
+                    msg.Ok
+                    msg.exec_()
+                    break
+        if flag: #jesli plik nie istnieje to zapisz
+            self.RulePresetsComboBox.addItem(filename)
+            with open("RulePresets\\"+filename, 'w') as newfile:
+                print(json.dumps( self.CellBornLineEdit.text() ) )
+                json.dump(self.CellBornLineEdit.text(), newfile)
+                newfile.write('\n')
+                json.dump(self.CellDiesLineEdit.text(), newfile)
+            #self.CellBornLineEdit.text()
+      
+            
+    def DeleteRulesPreset(self):
+        choice = QtGui.QMessageBox.question(self, 'Delete preset: '+ self.RulePresetsComboBox.currentText(), "Are you sure?",
+                                            QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+        if choice == QtGui.QMessageBox.Yes:
+            print("Deleting current preset...",self.RulePresetsComboBox.currentText())
+            os.remove("RulePresets\\"+self.RulePresetsComboBox.currentText())
+            self.RulePresetsComboBox.removeItem(self.RulePresetsComboBox.currentIndex())
+            
+            
         
+    
+    def UpdateRules(self): #w razie zmiany, zladuj nowe ustaiwenia
+        with open("RulePresets\\"+self.RulePresetsComboBox.currentText(), 'r') as readfile:
+            print( json.load(readfile) )
+            #MainWindow.RulesTabBorn = ''
+            #MainWindow.RulesTabDies = "2"
+           # self.CellBornLineEdit.setText(MainWindow.RulesTabBorn)
+            #self.CellDiesLineEdit.setText(MainWindow.RulesTabDies)
+    
 if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
     ui = MainWindow()
