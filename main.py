@@ -305,13 +305,12 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
     def DrawGrid(self):     #wywolywane wtedu gdy zmienia sie rozmiar tablicy
         #todo zmienic definicje tablicy na append i del, dodać remove item i usunac scene.clear()
         global BOXES
-        
-        self.graphicsView.setSceneRect(0,0,self.cel_size*self.rows, self.cel_size*self.columns)
+        self.graphicsView.setSceneRect(0,0,self.cel_size*self.columns, self.cel_size*self.rows)
         self.graphicsScene.clear() #potrzebne gdy usuwam elementy
         for i in range(self.rows):
             for j  in range(self.columns):
                 self.graphicsScene.addItem(BOXES[i][j])
-        self.graphicsView.centerOn(BOXES[self.rows//2][self.columns//2])
+        #self.graphicsView.centerOn(BOXES[self.rows//2][self.columns//2])
         self.DrawChange()
     
     def DrawChange(self):   #rysuje wszystkie kolory dla calej tablicy
