@@ -147,7 +147,7 @@ class Ui_MainWindow():
         self.FPSSpinBox.setMinimum(0.01)
         self.FPSSpinBox.setMaximum(1001.0)
         self.FPSSpinBox.setSingleStep(1.0)
-        self.FPSSpinBox.setProperty("value", 2.0)
+        self.FPSSpinBox.setProperty("value", 4.0)
         self.FPSSpinBox.setObjectName(_fromUtf8("FPSSpinBox"))
         self.gridLayout.addWidget(self.FPSSpinBox, 0, 1, 1, 1)
         self.RightBar.addLayout(self.gridLayout)

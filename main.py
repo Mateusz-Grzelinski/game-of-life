@@ -80,11 +80,14 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         self.graphicsView.setScene(self.graphicsScene)
         #self.graphicsView.setViewport(QtOpenGL.QGLWidget()) #obliczenia na karcie graficznej- nie zmienia duzo
         #init cells:
-        BOXES = [ [CellItem(self.cel_size*i,self.cel_size*j,self.cel_size,self.cel_size) for i in range(self.rows)] for j in range(self.columns)]
+        BOXES = [ [CellItem(self.cel_size*j,self.cel_size*i,self.cel_size,self.cel_size, i, j) for j in range(self.columns)] for i in range(self.rows)]
         self.DrawGrid()
         
-        self.EditRules.clicked.connect(self.EditRulesWindow)
+        self.LoadPresetsNames()
         self.RemovePreset.clicked.connect(self.DeletePreset)
+        self.SaveState.clicked.connect(self.SavePreset)
+        self.ChoicePresets.currentIndexChanged.connect(self.ReadPreset)
+        self.EditRules.clicked.connect(self.EditRulesWindow)
         self.FPSSpinBox.valueChanged.connect(self.UpdateFPS)
         self.StartStop.clicked.connect(self.ToogleAutoGen)
         self.RandomInfection.clicked.connect(self.RandomizePlag)
@@ -100,17 +103,84 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         #self.graphicsView.setSceneRect(self.graphicsScene.itemsBoundingRect())
         self.ScaleIn.clicked.connect(self.scaleViewIn)
         self.ScaleOut.clicked.connect(self.scaleViewOut)
-
-        
+    def LoadPresetsNames(self): #add presets to ComboBox
+        for file in os.listdir("GamePresets"):
+            self.RulePresetsComboBox.addItem(os.path.splitext(file)[0])  #nazwy plikow bez rozszerzen
+    def SavePreset(self):
+        filename, ok = QtGui.QInputDialog.getText(self, 'Save Game Preset', 'Enter preset name:')
+        flag=True 
+        if ok and filename!='' and not ('.' in filename):   #jesli wprowadzono dane
+            for file in os.listdir("GamePresets"):          #sprawdz czy plik juz istnieje
+                if filename in os.path.splitext(file)[0] :
+                    flag=False
+                    msg = QtGui.QMessageBox()
+                    msg.setIcon(QtGui.QMessageBox.Warning)
+                    msg.setWindowTitle("Error!")
+                    msg.setText("Preset not saved!\n\
+                                File with this name arleady exsists or name specified incorrectly")
+                    msg.Ok
+                    msg.exec_()
+                    break
+        if flag: #jesli plik nie istnieje to zapisz
+            global BOXES
+            self.ChoicePresets.addItem(filename)
+            self.ChoicePresets.setCurrentIndex(self.ChoicePresets.findText(filename))
+            with open("GamePresets\\"+filename, 'w') as newfile:
+                status = [[json.dumps(BOXES[i][j]._status) for i in range(self.rows)] for j in range(self.columns)]
+                plag   = [[json.dumps(BOXES[i][j]._plag)   for i in range(self.rows)] for j in range(self.columns)]
+                json.dump(self.rows, newfile)
+                newfile.write('\n')
+                json.dump(self.columns, newfile)
+                newfile.write('\n')
+                json.dump(self.RowsColumsCheckBox.isChecked(), newfile)
+                newfile.write('\n')
+                json.dump(status, newfile)
+                newfile.write('\n')
+                json.dump(self.PlagueCheckBox.isChecked(), newfile)
+                newfile.write('\n') 
+                if self.PlagueCheckBox.isChecked() :
+                    json.dump(plag, newfile)
+                    
+    def ReadPreset(self):
+        global BOXES
+        with open("GamePresets\\"+self.ChoicePresets.currentText(), 'r') as readfile: 
+            self.rows   = json.loads( readfile.readline() ) #ilosc wierszy 
+            self.columns= json.loads( readfile.readline() ) #ilosc kolumn
+            
+            if( json.loads( readfile.readline() ) ): #status: self.RowsColumsCheckBox.isChecked()
+                self.RowsColumsCheckBox.setChecked()
+                self.ColumnsSpinBox.setValue(self.columns)
+                self.RowsSpinBox.setValue(self.rows)
+            else:
+                self.RowsColumsCheckBox.setCheckState(False)
+                self.ColumnsSpinBox.setValue(self.columns)
+                self.RowsSpinBox.setValue(self.rows)
+                
+            tmp = json.loads( readfile.readline() ) #status komorek(tablica)
+            BOXES = [ [CellItem(self.cel_size*j,self.cel_size*i,self.cel_size,self.cel_size, i, j) for j in range(self.columns)] for i in range(self.rows)]
+            for i in range(self.rows):
+                for j in range(self.columns):
+                    BOXES[i][j]._status = tmp[i][j]
+                    BOXES[i][j]._prev   = tmp[i][j]
+                    
+            if json.loads( readfile.readline() ): #wczytuje status checkboxa do plagi
+                self.PlagueCheckBox.setChecked()
+                self.PlagRandomActivate()
+                tmp=json.loads( readfile.readline() ) #wczytuje tablice plagi
+                for i in range(self.rows):
+                    for j in range(self.columns):
+                        BOXES[i][j]._plag = tmp[i][j]
+            else:
+                self.PlagueCheckBox.setCheckState(False)
+                self.PlagRandomActivate()
+        self.DrawGrid() #zmienia ustawienia rows, columns, rysuje DrawGid, DrawChange
     def DeletePreset(self):
-        choice = QtGui.QMessageBox.question(self, 'Delete preset: bla bla',
-                                            "Are you sure?",
+        choice = QtGui.QMessageBox.question(self, 'Delete preset: '+ self.ChoicePresets.currentText(), "Are you sure?",
                                             QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
         if choice == QtGui.QMessageBox.Yes:
-            print("Deleting current preset...")
-            sys.exit()
-        else:
-            pass
+            print("Deleting current preset...",self.ChoicePresets.currentText())
+            os.remove("GamePresets\\"+self.ChoicePresets.currentText())
+            self.ChoicePresets.removeItem(self.ChoicePresets.currentIndex())
     def UpdateFPS(self):    
         self.fps = 1000/self.FPSSpinBox.value()
         self.ToogleAutoGen()
@@ -144,7 +214,7 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         global BOXES
         for i in range(self.rows):
             for j in range(self.columns):
-                if (random.randint(-50,30)>0 and BOXES[i][j]._status==True):
+                if (random.randint(-50,10)>0 and BOXES[i][j]._status==True):
                     BOXES[i][j]._plag =True
                 else:
                     BOXES[i][j]._plag = False
@@ -170,7 +240,7 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
             self.ColumnsSpinBox.setValue(self.columns)
         else:
             self.columns = self.ColumnsSpinBox.value()
-        BOXES = [ [CellItem(self.cel_size*i,self.cel_size*j,self.cel_size,self.cel_size, i, j) for i in range(self.rows)] for j in range(self.columns)]
+        BOXES = [ [CellItem(self.cel_size*j,self.cel_size*i,self.cel_size,self.cel_size, i, j) for j in range(self.columns)] for i in range(self.rows)]
         self.DrawGrid()
         
     def getAmountOfNeighbs(self,x,y):
@@ -184,8 +254,8 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
             if nX >= 0 and nY >= 0 and nX < self.rows and nY < self.columns: 
                 if (BOXES[nX][nY]._status_prev==True and not (diffX == diffY == 0)) :
                     neighbors += 1
-        if neighbors>0: 
-            print ("sasiad: ",x,y,neighbors)
+        #if neighbors>0: 
+            #print ("sasiad: ",x,y,neighbors)
         return neighbors
         
     def TickGen(self):
@@ -214,14 +284,14 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         #self.DrawChange()
         self.watch.stop()    
         if (1/self.FPSSpinBox.value()<self.watch.getTime()):
-            self.LDelay.setText("Last generation took:\n"+ "{0:.3f}".format(self.watch.getTime()) + " sec.to calculate"+"\nNOT reatlime")
+            self.LDelay.setText("Last generation took:\n"+ "{0:.3f}".format(self.watch.getTime()) + " sec.to calculate"+"\nNot reatlime")
         else:
             self.LDelay.setText("Last generation took:\n"+ "{0:.3f}".format(self.watch.getTime()) + " sec.to calculate")
 
         
     def NewLife(self):  #zresetuj wszystko oprocz wartosci 
         global BOXES
-        self.timer.stop()
+        self.timer.stop() #zatrzymuje automatuczna generacje
         self.generation=0
         self.LGeneration.setText("Generation: "+str(self.generation) )
         for i in range(self.rows):
@@ -235,13 +305,11 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
     def DrawGrid(self):     #wywolywane wtedu gdy zmienia sie rozmiar tablicy
         #todo zmienic definicje tablicy na append i del, dodać remove item i usunac scene.clear()
         global BOXES
-        self.graphicsView.setSceneRect(0,0,self.cel_size*self.rows,self.cel_size*self.columns)
+        
+        self.graphicsView.setSceneRect(0,0,self.cel_size*self.rows, self.cel_size*self.columns)
         self.graphicsScene.clear() #potrzebne gdy usuwam elementy
         for i in range(self.rows):
             for j  in range(self.columns):
-                #BOXES = [ [CellItem(self.cel_size*i,self.cel_size*j,self.cel_size,self.cel_size, i, j) for i in range(self.rows)] for j in range(self.columns)]
-                BOXES[i][j]._i= i 
-                BOXES[i][j]._j=j
                 self.graphicsScene.addItem(BOXES[i][j])
         self.graphicsView.centerOn(BOXES[self.rows//2][self.columns//2])
         self.DrawChange()
@@ -270,15 +338,16 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         global BOXES
         if( self.RowsColumsCheckBox.isChecked() ):
             self.columns = self.rows
+            self.ColumnsSpinBox.setValue(self.columns)
             self.LColums.setEnabled(False) 
             self.ColumnsSpinBox.setEnabled(False)
-            BOXES = [ [CellItem(self.cel_size*i,self.cel_size*j,self.cel_size,self.cel_size, i, j) for i in range(self.rows)] for j in range(self.columns)]
-            self.DrawGrid()
+            BOXES = [ [CellItem(self.cel_size*j,self.cel_size*i,self.cel_size,self.cel_size, i, j) for j in range(self.columns)] for i in range(self.rows)]
         else:
             self.LColums.setEnabled(True) 
             self.ColumnsSpinBox.setEnabled(True)
-            BOXES = [ [CellItem(self.cel_size*i,self.cel_size*j,self.cel_size,self.cel_size, i, j) for i in range(self.rows)] for j in range(self.columns)]
-            self.DrawGrid()
+            self.columns = self.ColumnsSpinBox.value()
+            BOXES = [ [CellItem(self.cel_size*j,self.cel_size*i,self.cel_size,self.cel_size, i, j) for j in range(self.columns)] for i in range(self.rows)]
+        self.DrawGrid()
             
     def wheelEvent(self,event):
         if(event.delta() > 0):
@@ -315,12 +384,12 @@ class RuleEditorWidget( Ui_RuleEditorWidget, MainWindow):
         self.show()
     def UpdateBorn(self):
         for i in range(0,8): #sprawdza walidacje wprowadzonych danych
-            if (str(i) in self.CellBornLineEdit.text() and str(i) in self.CellDiesLineEdit.text()):
+            if (str(i) in self.CellBornLineEdit.text() and str(i) in self.CellDiesLineEdit.text()) :
                 self.CellBornLineEdit.setText(MainWindow.RulesTabBorn)
         MainWindow.RulesTabBorn = self.CellBornLineEdit.text()
     def UpdateDies(self):
         for i in range(0,8):
-            if (str(i) in self.CellBornLineEdit.text() and str(i) in self.CellDiesLineEdit.text()):
+            if (str(i) in self.CellBornLineEdit.text() and str(i) in self.CellDiesLineEdit.text()) :
                 self.CellDiesLineEdit.setText(MainWindow.RulesTabDies)
         MainWindow.RulesTabDies = self.CellDiesLineEdit.text()
     def LoadRulesNames(self): #add presets to ComboBox
@@ -330,7 +399,7 @@ class RuleEditorWidget( Ui_RuleEditorWidget, MainWindow):
     def AddRulesPresetPopup(self):
         filename, ok = QtGui.QInputDialog.getText(self, 'Save Rule Preset', 'Enter preset name:')
         flag=True 
-        if ok: #jesli wprowadzono dane
+        if ok and filename!='' and not ('.' in filename): #jesli wprowadzono dane
             for file in os.listdir("RulePresets"): #sprawdz czy plik juz istnieje
                 if filename in os.path.splitext(file)[0] :
                     flag=False
@@ -348,10 +417,9 @@ class RuleEditorWidget( Ui_RuleEditorWidget, MainWindow):
                 print(json.dumps( self.CellBornLineEdit.text() ) )
                 json.dump(self.CellBornLineEdit.text(), newfile)
                 newfile.write('\n')
-                json.dump(self.CellDiesLineEdit.text(), newfile)
-            #self.CellBornLineEdit.text()
+                json.dump(self.CellDiesLineEdit.text(), newfile)    
+                self.RulePresetsComboBox.setCurrentIndex(self.RulePresetsComboBox.findText(filename))
       
-            
     def DeleteRulesPreset(self):
         choice = QtGui.QMessageBox.question(self, 'Delete preset: '+ self.RulePresetsComboBox.currentText(), "Are you sure?",
                                             QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
@@ -360,16 +428,12 @@ class RuleEditorWidget( Ui_RuleEditorWidget, MainWindow):
             os.remove("RulePresets\\"+self.RulePresetsComboBox.currentText())
             self.RulePresetsComboBox.removeItem(self.RulePresetsComboBox.currentIndex())
             
-            
-        
     
-    def UpdateRules(self): #w razie zmiany, zladuj nowe ustaiwenia
-        with open("RulePresets\\"+self.RulePresetsComboBox.currentText(), 'r') as readfile:
-            print( json.load(readfile) )
-            #MainWindow.RulesTabBorn = ''
-            #MainWindow.RulesTabDies = "2"
-           # self.CellBornLineEdit.setText(MainWindow.RulesTabBorn)
-            #self.CellDiesLineEdit.setText(MainWindow.RulesTabDies)
+    def UpdateRules(self): #w razie zmiany, zladuj nowe ustawienia
+        with open("RulePresets\\"+self.RulePresetsComboBox.currentText(), 'r') as readfile: 
+            MainWindow.RulesTabBorn, MainWindow.RulesTabDies = [json.loads(line) for line in readfile ]
+        self.CellBornLineEdit.setText(MainWindow.RulesTabBorn)
+        self.CellDiesLineEdit.setText(MainWindow.RulesTabDies)
     
 if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
