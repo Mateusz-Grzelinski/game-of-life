@@ -25,6 +25,7 @@ class CellItem(QtGui.QGraphicsRectItem):
         if self._status == True:
             self._status_prev = False
             self._status = False
+            self._plag = False
         else:
             self._status_prev = True
             self._status = True
@@ -83,7 +84,7 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         BOXES = [ [CellItem(self.cel_size*j,self.cel_size*i,self.cel_size,self.cel_size, i, j) for j in range(self.columns)] for i in range(self.rows)]
         self.DrawGrid()
         
-        self.LoadPresetsNames()
+       # self.LoadPresetsNames()
         self.RemovePreset.clicked.connect(self.DeletePreset)
         self.SaveState.clicked.connect(self.SavePreset)
         self.ChoicePresets.currentIndexChanged.connect(self.ReadPreset)
@@ -103,9 +104,9 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         #self.graphicsView.setSceneRect(self.graphicsScene.itemsBoundingRect())
         self.ScaleIn.clicked.connect(self.scaleViewIn)
         self.ScaleOut.clicked.connect(self.scaleViewOut)
-    def LoadPresetsNames(self): #add presets to ComboBox
-        for file in os.listdir("GamePresets"):
-            self.RulePresetsComboBox.addItem(os.path.splitext(file)[0])  #nazwy plikow bez rozszerzen
+    #def LoadPresetsNames(self): #add presets to ComboBox
+    #    for file in os.listdir("GamePresets"):
+    #        self.RulePresetsComboBox.addItem(os.path.splitext(file)[0])  #nazwy plikow bez rozszerzen
     def SavePreset(self):
         filename, ok = QtGui.QInputDialog.getText(self, 'Save Game Preset', 'Enter preset name:')
         flag=True 
@@ -194,11 +195,15 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         if ( self.PlagueCheckBox.isChecked() ):
             self.RandomInfection.setEnabled(True)
         else:
-            self.RandomInfection.setEnabled(False)
             global BOXES
-            for i in range(self.rows): #wymaz wszyskie plagi
+            self.RandomInfection.setEnabled(False)
+            for i in range(self.rows):      #wymaz wszyskie plagi
                 for j in range(self.columns):
-                        BOXES[i][j]._plag = False
+                    BOXES[i][j]._plag = False
+            self.DrawChange()
+            
+                
+            
     def Randomize(self):
         global BOXES
         for i in range(self.rows):
@@ -214,8 +219,8 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         global BOXES
         for i in range(self.rows):
             for j in range(self.columns):
-                if (random.randint(-50,10)>0 and BOXES[i][j]._status==True):
-                    BOXES[i][j]._plag =True
+                if (random.randint(-50,50)>0 and BOXES[i][j]._status):
+                    BOXES[i][j]._plag = True
                 else:
                     BOXES[i][j]._plag = False
         self.DrawChange()
@@ -245,18 +250,31 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         
     def getAmountOfNeighbs(self,x,y):
         neighbors = 0
-        global BOXES
+        IsSick    = False
+        global BOXES  
+        '''
+        if self.PlagueCheckBox.isChecked(): #czy w okolo komorki jest zarazona komorka
+            for diffX in {-1,0,1}:
+                for diffY in {-1,0,1}:
+                    nX = x + diffX
+                    nY = y + diffY
+                    if BOXES[nX][nY]._plag :
+                        IsSick = True
+        '''
+                         
+                        
         for diffX in {-1,0,1}:
-          for diffY in {-1,0,1}:
-            nX = x + diffX
-            nY = y + diffY
-            #czy jestem dalej w obszarze tablicy:
-            if nX >= 0 and nY >= 0 and nX < self.rows and nY < self.columns: 
-                if (BOXES[nX][nY]._status_prev==True and not (diffX == diffY == 0)) :
-                    neighbors += 1
+            for diffY in {-1,0,1}:
+                nX = x + diffX
+                nY = y + diffY
+                #czy jestem dalej w obszarze tablicy:
+                if nX >= 0 and nY >= 0 and nX < self.rows and nY < self.columns: 
+                    if (BOXES[nX][nY]._status_prev==True and not (diffX == diffY == 0)) :
+                        neighbors += 1
         #if neighbors>0: 
-            #print ("sasiad: ",x,y,neighbors)
-        return neighbors
+            #print ("sasiad: ",x,y,neighbors,IsSick,)
+        tmp=[neighbors, IsSick]
+        return tmp
         
     def TickGen(self):
         global BOXES
@@ -268,20 +286,26 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
                     BOXES[i][j]._backup_gen_plag = BOXES[i][j]._plag
         self.generation+=1
         self.LGeneration.setText("Generation: "+str(self.generation) )
-        
-        for i in range(self.rows):      #dodac reguly dot plagi!!
+        #print('---------------------')
+        #print("rows, col", self.rows, self.columns)
+        for i in range(self.rows): 
             for j in range(self.columns):
-                neighbours=self.getAmountOfNeighbs(i,j)
-                if  BOXES[i][j]._status_prev == True and (str(neighbours) in self.RulesTabDies):
+                neighbours = self.getAmountOfNeighbs(i,j)
+                #print(neighbours)
+                if  (BOXES[i][j]._status_prev == True and (str(neighbours[0]) in self.RulesTabDies)) or BOXES[i][j]._plag==True:
                     BOXES[i][j]._status  = False
-                if BOXES[i][j]._status_prev == False and (str(neighbours) in self.RulesTabBorn):
+                    #print("to jest if status")
+                    BOXES[i][j]._plag    = False
+                elif (BOXES[i][j]._status_prev == False and (str(neighbours[0]) in self.RulesTabBorn)):
                     BOXES[i][j]._status = True
-                self.DrawChangeSingle(i,j)
-                
+                    if neighbours[1]: #czy urodzona komorka bedzie chora
+                        BOXES[i][j]._plag   = True
+                        
         for i in range(self.rows):     #potrzebne do generacji kolejnego pokolenia
-            for j in range(self.columns):
+            for j in range(self.columns):#zwykle przepisanie wartosci
                 BOXES[i][j]._status_prev = BOXES[i][j]._status
-        #self.DrawChange()
+                print("status", BOXES[i][j]._status)
+        self.DrawChange()
         self.watch.stop()    
         if (1/self.FPSSpinBox.value()<self.watch.getTime()):
             self.LDelay.setText("Last generation took:\n"+ "{0:.3f}".format(self.watch.getTime()) + " sec.to calculate"+"\nNot reatlime")
@@ -317,21 +341,21 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         global BOXES
         for i in range(self.rows):
             for j  in range(self.columns):
-                if( BOXES[i][j]._status == True):
+                if( BOXES[i][j]._plag ):
+                    BOXES[i][j].setBrush(self.plague)
+                elif BOXES[i][j]._status :
                     BOXES[i][j].setBrush(self.checked)
                 else:
                     BOXES[i][j].setBrush(self.unchecked)
-                if( BOXES[i][j]._plag == True ):
-                    BOXES[i][j].setBrush(self.plague)
                     
     def DrawChangeSingle(self, i, j):   #rysuje wszystkie kolory dla JEDNEJ komorki
         global BOXES
-        if( BOXES[i][j]._status == True):
+        if( BOXES[i][j]._plag ):
+            BOXES[i][j].setBrush(self.plague)
+        elif BOXES[i][j]._status :
             BOXES[i][j].setBrush(self.checked)
         else:
             BOXES[i][j].setBrush(self.unchecked)
-        if( BOXES[i][j]._plag == True ):
-            BOXES[i][j].setBrush(self.plague)
 
     def SetSquare(self):
         global BOXES
@@ -363,12 +387,11 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         self.WindowRulesEditor = RuleEditorWidget()
         
 class RuleEditorWidget( Ui_RuleEditorWidget, MainWindow): 
-    #dziedziczy z qwidget aby postawic okno, Ui_RuleEditorWidget aby postawic UI,
+    #dziedziczy z qwidget(wMainWindow) aby postawic okno, Ui_RuleEditorWidget aby postawic UI,
     #z MainWindow aby miec dostep do RulesTabBorn, RulesTabDies 
     def __init__(self):
-        #super(RuleEditorWidget,self).__init__() możzna tez tak jak nizej
+        #super(RuleEditorWidget,self).__init__() można tez tak jak nizej
         QtGui.QWidget.__init__(self)
-        
         self.setupUi(self)
         self.retranslateUi(self)
         self.move(0,550)
