@@ -14,18 +14,20 @@ class CellItem(QtGui.QGraphicsRectItem):
     def __init__(self, a,b,c,d,i=0,j=0 ):
         super().__init__(a,b,c,d)
         self._i= i
-        self._j= j               #used for click event
+        self._j= j                  #do kliknięcia
         self._status=False
-        self._status_prev=False  #for counting next self.generation
+        self._status_prev=False     #do liczenia kolejnego pokolenia 
         self._plag=False
-        self._backup_gen=False     #do guzika Back to begining
+        self._plag_prev=False
+        self._backup_gen=False      #do guzika Back to begining
         self._backup_gen_plag=False #do guzika Back to begining
-    
+
     def changeCell(self):
         if self._status == True:
             self._status_prev = False
             self._status = False
             self._plag = False
+            self._plag_prev = False
         else:
             self._status_prev = True
             self._status = True
@@ -33,8 +35,10 @@ class CellItem(QtGui.QGraphicsRectItem):
         if ( ui.PlagueCheckBox.isChecked()  ):
             if self._plag == True:
                 self._plag = False
+                self._plag_prev = False
             else:
                 self._plag = True
+                self._plag_prev = True
                 self._status_prev = True
                 self._status = True
     def mousePressEvent(self, event):
@@ -65,16 +69,18 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         self.retranslateUi(self)
         
         self.generation = 0
-        self.rows = 10
-        self.columns = 10
-        self.cel_size = 20
-        self.checked = QtGui.QBrush(QtGui.QColor(220,220,240))
-        self.unchecked = QtGui.QBrush(QtGui.QColor(30,30,35))
-        self.plague = QtGui.QBrush(QtGui.QColor(220,100,150))
-        self.fps = 1000/self.FPSSpinBox.value()
-        self.watch = MeasureTime()
-        self.timer = QtCore.QTimer()    #do autogeneracji
-        self.timer.timeout.connect(self.TickGen)
+        self.rows       = 10
+        self.columns    = 10
+        self.cel_size   = 20
+        self.bornboost  = 8
+        self.diesboost  = 4
+        self.checked    = QtGui.QBrush(QtGui.QColor(220,220,240))
+        self.unchecked  = QtGui.QBrush(QtGui.QColor(40,40,45))
+        self.plague     = QtGui.QBrush(QtGui.QColor(220,100,150))
+        self.fps        = 1000/self.FPSSpinBox.value()
+        self.watch      = MeasureTime()
+        self.timer      = QtCore.QTimer()    #do autogeneracji
+        self.timer.timeout.connect(self.WhichTick)
         #self.setMouseTracking(True) niepotrzebne
         self.graphicsScene = QtGui.QGraphicsScene()
         self.graphicsScene.setSceneRect(0,0,400,300)
@@ -99,7 +105,7 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         self.RowsColumsCheckBox.stateChanged.connect(self.SetSquare)
         self.RowsSpinBox.valueChanged.connect(self.UpdateValues)
         self.ColumnsSpinBox.valueChanged.connect(self.UpdateValues)
-        self.Tick.clicked.connect(self.TickGen)
+        self.Tick.clicked.connect(self.WhichTick)
         self.graphicsView.setSceneRect(0,0,self.cel_size*self.rows,self.cel_size*self.columns)
         #self.graphicsView.setSceneRect(self.graphicsScene.itemsBoundingRect())
         self.ScaleIn.clicked.connect(self.scaleViewIn)
@@ -184,7 +190,7 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
             self.ChoicePresets.removeItem(self.ChoicePresets.currentIndex())
     def UpdateFPS(self):    
         self.fps = 1000/self.FPSSpinBox.value()
-        self.ToogleAutoGen()
+        self.ToogleAutoGen() #zresetuj zegar
         self.ToogleAutoGen()
     def ToogleAutoGen(self):
         if self.timer.isActive()==True:
@@ -200,15 +206,13 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
             for i in range(self.rows):      #wymaz wszyskie plagi
                 for j in range(self.columns):
                     BOXES[i][j]._plag = False
+                    BOXES[i][j]._plag_prev = False
             self.DrawChange()
-            
-                
-            
     def Randomize(self):
         global BOXES
         for i in range(self.rows):
             for j in range(self.columns):
-                if (random.randint(-50,30)>0): #ustawianie prawdopodobienstwa
+                if (random.randint(-50,25)>0): #ustawianie prawdopodobienstwa
                     BOXES[i][j]._status = True
                     BOXES[i][j]._status_prev = True
                 else:
@@ -219,10 +223,12 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         global BOXES
         for i in range(self.rows):
             for j in range(self.columns):
-                if (random.randint(-50,50)>0 and BOXES[i][j]._status):
+                if (random.randint(-50,3)>0 and BOXES[i][j]._status):
                     BOXES[i][j]._plag = True
+                    BOXES[i][j]._plag_prev = True
                 else:
                     BOXES[i][j]._plag = False
+                    BOXES[i][j]._plag_prev = False
         self.DrawChange()
         
     def ToBeginning(self):
@@ -232,9 +238,10 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         self.LGeneration.setText("Generation: "+str(self.generation) )
         for i in range(self.rows):
             for j in range(self.columns):
-                BOXES[i][j]._status =  BOXES[i][j]._backup_gen
-                BOXES[i][j]._status_prev = BOXES[i][j]._backup_gen
-                BOXES[i][j]._plag = BOXES[i][j]._backup_gen_plag
+                BOXES[i][j]._status =       BOXES[i][j]._backup_gen
+                BOXES[i][j]._status_prev =  BOXES[i][j]._backup_gen
+                BOXES[i][j]._plag =         BOXES[i][j]._backup_gen_plag
+                BOXES[i][j]._plag_prev =    BOXES[i][j]._backup_gen_plag
         self.DrawChange()
         
     def UpdateValues(self):
@@ -247,19 +254,7 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
             self.columns = self.ColumnsSpinBox.value()
         BOXES = [ [CellItem(self.cel_size*j,self.cel_size*i,self.cel_size,self.cel_size, i, j) for j in range(self.columns)] for i in range(self.rows)]
         self.DrawGrid()
-    def IfSick(self, x, y):
-        sick = False
-        print("checkbox:", self.PlagueCheckBox.isChecked(), x, y )
-        #czy w okolo komorki jest zarazona komorka
-        for diffX in {-1,0,1}:
-            for diffY in {-1,0,1}:
-                nX = x + diffX
-                nY = y + diffY
-                if nX >= 0 and nY >= 0 and nX < self.rows and nY < self.columns:
-                    if BOXES[nX][nY]._plag and not (diffX==diffY==0):
-                        sick = True
-                        return sick
-        return sick
+
     def getAmountOfNeighbs(self,x,y):
         neighbors = 0
         global BOXES        
@@ -271,48 +266,71 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
                 if nX >= 0 and nY >= 0 and nX < self.rows and nY < self.columns:
                     if (BOXES[nX][nY]._status_prev==True and not (diffX == diffY == 0)) :
                         neighbors += 1
+                #if neighbors>=diesboost: przyspieszenie ??
+                #    return neighbors
         #if neighbors>0: 
             #print ("sasiad: ",x,y,neighbors,IsSick,)
         return neighbors
-        
-    def TickGen(self):
-        global BOXES
+    def WhichTick(self):
         self.watch.start()
         if (self.generation==0): #ustawianie pkt powrotu Back to beginning 
             for i in range(self.rows):
                 for j in range(self.columns):
                     BOXES[i][j]._backup_gen = BOXES[i][j]._status 
                     BOXES[i][j]._backup_gen_plag = BOXES[i][j]._plag
-        self.generation+=1
-        self.LGeneration.setText("Generation: "+str(self.generation) )
-        #print('---------------------')
-        #print("rows, col", self.rows, self.columns)
-        for i in range(self.rows): 
-            for j in range(self.columns):
-                neighbours = self.getAmountOfNeighbs(i,j)
-                
-                if  (BOXES[i][j]._status_prev == True and (str(neighbours) in self.RulesTabDies)) or BOXES[i][j]._plag==True:
-                    BOXES[i][j]._status  = False
-                    #print("to jest if status")
-                    BOXES[i][j]._plag    = False
-                elif (BOXES[i][j]._status_prev == False and (str(neighbours) in self.RulesTabBorn)):
-                    BOXES[i][j]._status = True
-                if self.PlagueCheckBox.isChecked():
-                    sick = self.IfSick(i,j)
-                    if sick and BOXES[i][j]._status: #czy urodzona komorka bedzie chora
-                        BOXES[i][j]._plag   = True
-                        
+        if self.PlagueCheckBox.isChecked():
+            self.TickGenPlag()  #wolniejsza wersja
+        else:
+            self.TickGen()      #szybsza wersja
         for i in range(self.rows):     #potrzebne do generacji kolejnego pokolenia
             for j in range(self.columns):#zwykle przepisanie wartosci
                 BOXES[i][j]._status_prev = BOXES[i][j]._status
-                print("status", BOXES[i][j]._status, "plag:", BOXES[i][j]._plag)
+                BOXES[i][j]._plag_prev = BOXES[i][j]._plag
         self.DrawChange()
-        self.watch.stop()    
+        self.watch.stop()   
+        self.generation+=1
+        self.LGeneration.setText("Generation: "+str(self.generation) )
         if (1/self.FPSSpinBox.value()<self.watch.getTime()):
             self.LDelay.setText("Last generation took:\n"+ "{0:.3f}".format(self.watch.getTime()) + " sec.to calculate"+"\nNot reatlime")
         else:
             self.LDelay.setText("Last generation took:\n"+ "{0:.3f}".format(self.watch.getTime()) + " sec.to calculate")
-
+        
+    def TickGen(self):
+        global BOXES
+        for i in range(self.rows): 
+            for j in range(self.columns):
+                neighbours = self.getAmountOfNeighbs(i,j)
+                if  ( (str(neighbours) in self.RulesTabDies)):
+                    BOXES[i][j]._status  = False
+                elif ( (str(neighbours) in self.RulesTabBorn)):
+                    BOXES[i][j]._status = True
+                
+    def IfSick(self, x, y): #czy komorka bedzie chora
+        sick = False
+        #czy w okolo komorki jest zarazona komorka
+        for diffX in {-1,0,1}:
+            for diffY in {-1,0,1}:
+                nX = x + diffX
+                nY = y + diffY
+                if nX >= 0 and nY >= 0 and nX < self.rows and nY < self.columns:
+                    if BOXES[nX][nY]._plag_prev and not (diffX==diffY==0):
+                        sick = True
+                        return sick
+        return sick
+    def TickGenPlag(self):
+        global BOXES
+        for i in range(self.rows): 
+            for j in range(self.columns):
+                neighbours = self.getAmountOfNeighbs(i,j)
+                if  ((str(neighbours) in self.RulesTabDies)) or BOXES[i][j]._plag_prev:
+                    BOXES[i][j]._status  = False
+                    BOXES[i][j]._plag    = False
+                elif (str(neighbours) in self.RulesTabBorn) :
+                    BOXES[i][j]._status = True
+                if BOXES[i][j]._status: #czy kom zyje
+                    sick = self.IfSick(i,j) #czy kom edzie chora
+                    if sick : #czy zyjaca komorka stanie sie chora
+                        BOXES[i][j]._plag = True
         
     def NewLife(self):  #zresetuj wszystko oprocz wartosci 
         global BOXES
@@ -405,16 +423,26 @@ class RuleEditorWidget( Ui_RuleEditorWidget, MainWindow):
         self.LoadRulesNames()
         self.RulePresetsComboBox.currentIndexChanged.connect(self.UpdateRules)
         self.show()
+    def SetBoostValues(self, rulesinput):
+        boost=8
+        for i in range(0,8,-1):
+            if str(i) in rulesinput:
+                boost=i
+            else:
+                break
+        return boost
     def UpdateBorn(self):
         for i in range(0,8): #sprawdza walidacje wprowadzonych danych
             if (str(i) in self.CellBornLineEdit.text() and str(i) in self.CellDiesLineEdit.text()) :
                 self.CellBornLineEdit.setText(MainWindow.RulesTabBorn)
         MainWindow.RulesTabBorn = self.CellBornLineEdit.text()
+        MainWindow.bornboost = self.SetBoostValues(self.CellBornLineEdit.text())
     def UpdateDies(self):
         for i in range(0,8):
             if (str(i) in self.CellBornLineEdit.text() and str(i) in self.CellDiesLineEdit.text()) :
                 self.CellDiesLineEdit.setText(MainWindow.RulesTabDies)
         MainWindow.RulesTabDies = self.CellDiesLineEdit.text()
+        MainWindow.diesboost = self.SetBoostValues(self.CellDiesLineEdit.text())
     def LoadRulesNames(self): #add presets to ComboBox
         for file in os.listdir("RulePresets"):
             #print(os.path.splitext(file)[0] ) #nazwy plikow bez rozszerzen
