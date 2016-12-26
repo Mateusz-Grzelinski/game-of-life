@@ -247,34 +247,33 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
             self.columns = self.ColumnsSpinBox.value()
         BOXES = [ [CellItem(self.cel_size*j,self.cel_size*i,self.cel_size,self.cel_size, i, j) for j in range(self.columns)] for i in range(self.rows)]
         self.DrawGrid()
-        
+    def IfSick(self, x, y):
+        sick = False
+        print("checkbox:", self.PlagueCheckBox.isChecked(), x, y )
+        #czy w okolo komorki jest zarazona komorka
+        for diffX in {-1,0,1}:
+            for diffY in {-1,0,1}:
+                nX = x + diffX
+                nY = y + diffY
+                if nX >= 0 and nY >= 0 and nX < self.rows and nY < self.columns:
+                    if BOXES[nX][nY]._plag and not (diffX==diffY==0):
+                        sick = True
+                        return sick
+        return sick
     def getAmountOfNeighbs(self,x,y):
         neighbors = 0
-        IsSick    = False
-        global BOXES  
-        '''
-        if self.PlagueCheckBox.isChecked(): #czy w okolo komorki jest zarazona komorka
-            for diffX in {-1,0,1}:
-                for diffY in {-1,0,1}:
-                    nX = x + diffX
-                    nY = y + diffY
-                    if BOXES[nX][nY]._plag :
-                        IsSick = True
-        '''
-                         
-                        
+        global BOXES        
         for diffX in {-1,0,1}:
             for diffY in {-1,0,1}:
                 nX = x + diffX
                 nY = y + diffY
                 #czy jestem dalej w obszarze tablicy:
-                if nX >= 0 and nY >= 0 and nX < self.rows and nY < self.columns: 
+                if nX >= 0 and nY >= 0 and nX < self.rows and nY < self.columns:
                     if (BOXES[nX][nY]._status_prev==True and not (diffX == diffY == 0)) :
                         neighbors += 1
         #if neighbors>0: 
             #print ("sasiad: ",x,y,neighbors,IsSick,)
-        tmp=[neighbors, IsSick]
-        return tmp
+        return neighbors
         
     def TickGen(self):
         global BOXES
@@ -291,20 +290,22 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         for i in range(self.rows): 
             for j in range(self.columns):
                 neighbours = self.getAmountOfNeighbs(i,j)
-                #print(neighbours)
-                if  (BOXES[i][j]._status_prev == True and (str(neighbours[0]) in self.RulesTabDies)) or BOXES[i][j]._plag==True:
+                
+                if  (BOXES[i][j]._status_prev == True and (str(neighbours) in self.RulesTabDies)) or BOXES[i][j]._plag==True:
                     BOXES[i][j]._status  = False
                     #print("to jest if status")
                     BOXES[i][j]._plag    = False
-                elif (BOXES[i][j]._status_prev == False and (str(neighbours[0]) in self.RulesTabBorn)):
+                elif (BOXES[i][j]._status_prev == False and (str(neighbours) in self.RulesTabBorn)):
                     BOXES[i][j]._status = True
-                    if neighbours[1]: #czy urodzona komorka bedzie chora
+                if self.PlagueCheckBox.isChecked():
+                    sick = self.IfSick(i,j)
+                    if sick and BOXES[i][j]._status: #czy urodzona komorka bedzie chora
                         BOXES[i][j]._plag   = True
                         
         for i in range(self.rows):     #potrzebne do generacji kolejnego pokolenia
             for j in range(self.columns):#zwykle przepisanie wartosci
                 BOXES[i][j]._status_prev = BOXES[i][j]._status
-                print("status", BOXES[i][j]._status)
+                print("status", BOXES[i][j]._status, "plag:", BOXES[i][j]._plag)
         self.DrawChange()
         self.watch.stop()    
         if (1/self.FPSSpinBox.value()<self.watch.getTime()):
