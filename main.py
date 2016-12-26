@@ -3,8 +3,10 @@
 Created on Thu Dec 15 20:36:13 2016
 @author: Mateusz Grzeliński
 """
-import sys, random, os, time, json
-#from PyQt4 import QtOpenGL
+import sys, os, json
+from time import clock
+from random import randint
+from PyQt4 import QtOpenGL
 from PyQt4 import QtGui, QtCore
 from GameUI20 import Ui_MainWindow
 from WindowRules1 import Ui_RuleEditorWidget
@@ -53,9 +55,9 @@ class MeasureTime():
     _time = 0.0
     _startTime = 0.0
     def start(self):
-        self._startTime= time.clock()
+        self._startTime= clock()
     def stop(self):
-        self._time = time.clock() - self._startTime
+        self._time = clock() - self._startTime
     def getTime(self):
         return self._time
                    
@@ -67,13 +69,11 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         super(MainWindow,self).__init__()
         self.setupUi(self)
         self.retranslateUi(self)
-        
+        self.last_rules_preset="Normal"
         self.generation = 0
         self.rows       = 10
         self.columns    = 10
         self.cel_size   = 20
-        self.bornboost  = 8
-        self.diesboost  = 4
         self.checked    = QtGui.QBrush(QtGui.QColor(220,220,240))
         self.unchecked  = QtGui.QBrush(QtGui.QColor(40,40,45))
         self.plague     = QtGui.QBrush(QtGui.QColor(220,100,150))
@@ -85,7 +85,7 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         self.graphicsScene = QtGui.QGraphicsScene()
         self.graphicsScene.setSceneRect(0,0,400,300)
         self.graphicsView.setScene(self.graphicsScene)
-        #self.graphicsView.setViewport(QtOpenGL.QGLWidget()) #obliczenia na karcie graficznej- nie zmienia duzo
+        self.graphicsView.setViewport(QtOpenGL.QGLWidget()) #obliczenia na karcie graficznej- nie zmienia duzo
         #init cells:
         BOXES = [ [CellItem(self.cel_size*j,self.cel_size*i,self.cel_size,self.cel_size, i, j) for j in range(self.columns)] for i in range(self.rows)]
         self.DrawGrid()
@@ -93,7 +93,7 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
        # self.LoadPresetsNames()
         self.RemovePreset.clicked.connect(self.DeletePreset)
         self.SaveState.clicked.connect(self.SavePreset)
-        self.ChoicePresets.currentIndexChanged.connect(self.ReadPreset)
+        self.ChoicePresets.activated.connect(self.ReadPreset)
         self.EditRules.clicked.connect(self.EditRulesWindow)
         self.FPSSpinBox.valueChanged.connect(self.UpdateFPS)
         self.StartStop.clicked.connect(self.ToogleAutoGen)
@@ -180,7 +180,7 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
             else:
                 self.PlagueCheckBox.setCheckState(False)
                 self.PlagRandomActivate()
-        self.DrawGrid() #zmienia ustawienia rows, columns, rysuje DrawGid, DrawChange
+        self.DrawGrid() #zmienia ustawienia rows, columns, rysuje siatke i kolory
     def DeletePreset(self):
         choice = QtGui.QMessageBox.question(self, 'Delete preset: '+ self.ChoicePresets.currentText(), "Are you sure?",
                                             QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
@@ -212,7 +212,7 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         global BOXES
         for i in range(self.rows):
             for j in range(self.columns):
-                if (random.randint(-50,25)>0): #ustawianie prawdopodobienstwa
+                if (randint(-50,25)>0): #ustawianie prawdopodobienstwa
                     BOXES[i][j]._status = True
                     BOXES[i][j]._status_prev = True
                 else:
@@ -223,7 +223,7 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         global BOXES
         for i in range(self.rows):
             for j in range(self.columns):
-                if (random.randint(-50,3)>0 and BOXES[i][j]._status):
+                if (randint(-50,3)>0 and BOXES[i][j]._status):
                     BOXES[i][j]._plag = True
                     BOXES[i][j]._plag_prev = True
                 else:
@@ -266,8 +266,6 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
                 if nX >= 0 and nY >= 0 and nX < self.rows and nY < self.columns:
                     if (BOXES[nX][nY]._status_prev==True and not (diffX == diffY == 0)) :
                         neighbors += 1
-                #if neighbors>=diesboost: przyspieszenie ??
-                #    return neighbors
         #if neighbors>0: 
             #print ("sasiad: ",x,y,neighbors,IsSick,)
         return neighbors
@@ -278,16 +276,18 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
                 for j in range(self.columns):
                     BOXES[i][j]._backup_gen = BOXES[i][j]._status 
                     BOXES[i][j]._backup_gen_plag = BOXES[i][j]._plag
+        #----------------------------------------------------------------------
         if self.PlagueCheckBox.isChecked():
             self.TickGenPlag()  #wolniejsza wersja
         else:
             self.TickGen()      #szybsza wersja
-        for i in range(self.rows):     #potrzebne do generacji kolejnego pokolenia
+        #----------------------------------------------------------------------
+        for i in range(self.rows): #potrzebne do generacji kolejnego pokolenia
             for j in range(self.columns):#zwykle przepisanie wartosci
                 BOXES[i][j]._status_prev = BOXES[i][j]._status
-                BOXES[i][j]._plag_prev = BOXES[i][j]._plag
+                BOXES[i][j]._plag_prev   = BOXES[i][j]._plag
         self.DrawChange()
-        self.watch.stop()   
+        self.watch.stop()
         self.generation+=1
         self.LGeneration.setText("Generation: "+str(self.generation) )
         if (1/self.FPSSpinBox.value()<self.watch.getTime()):
@@ -413,36 +413,32 @@ class RuleEditorWidget( Ui_RuleEditorWidget, MainWindow):
         QtGui.QWidget.__init__(self)
         self.setupUi(self)
         self.retranslateUi(self)
-        self.move(0,550)
-        self.CellBornLineEdit.setText( self.CellBornLineEdit.text() )
-        self.CellDiesLineEdit.setText( self.CellDiesLineEdit.text() )
+        self.move(0,500)
+        #self.RulePresetsComboBox.setCurrentIndex(self.RulePresetsComboBox.findText(MainWindow.last_rules_preset))
+        #self.CellBornLineEdit.setText( MainWindow.RulesTabBorn )
+        #self.CellDiesLineEdit.setText( MainWindow.RulesTabDies )
         self.CellBornLineEdit.textChanged.connect( self.UpdateBorn )
         self.CellDiesLineEdit.textChanged.connect( self.UpdateDies )
         self.RemovePreset.clicked.connect(self.DeleteRulesPreset)
         self.AddPreset.clicked.connect(self.AddRulesPresetPopup)
+        self.RulePresetsComboBox.activated.connect(self.UpdateRules)
         self.LoadRulesNames()
-        self.RulePresetsComboBox.currentIndexChanged.connect(self.UpdateRules)
+        try:
+            self.RulePresetsComboBox.setCurrentIndex(self.RulePresetsComboBox.findText(MainWindow.last_rules_preset))
+        except:
+            print("Nie udalo sie wczytac presetu rules 'Normal'. Nie wiem czemu to nie dziala")
+        self.UpdateRules()
         self.show()
-    def SetBoostValues(self, rulesinput):
-        boost=8
-        for i in range(0,8,-1):
-            if str(i) in rulesinput:
-                boost=i
-            else:
-                break
-        return boost
     def UpdateBorn(self):
         for i in range(0,8): #sprawdza walidacje wprowadzonych danych
             if (str(i) in self.CellBornLineEdit.text() and str(i) in self.CellDiesLineEdit.text()) :
                 self.CellBornLineEdit.setText(MainWindow.RulesTabBorn)
         MainWindow.RulesTabBorn = self.CellBornLineEdit.text()
-        MainWindow.bornboost = self.SetBoostValues(self.CellBornLineEdit.text())
     def UpdateDies(self):
         for i in range(0,8):
             if (str(i) in self.CellBornLineEdit.text() and str(i) in self.CellDiesLineEdit.text()) :
                 self.CellDiesLineEdit.setText(MainWindow.RulesTabDies)
         MainWindow.RulesTabDies = self.CellDiesLineEdit.text()
-        MainWindow.diesboost = self.SetBoostValues(self.CellDiesLineEdit.text())
     def LoadRulesNames(self): #add presets to ComboBox
         for file in os.listdir("RulePresets"):
             #print(os.path.splitext(file)[0] ) #nazwy plikow bez rozszerzen
@@ -468,8 +464,10 @@ class RuleEditorWidget( Ui_RuleEditorWidget, MainWindow):
                 print(json.dumps( self.CellBornLineEdit.text() ) )
                 json.dump(self.CellBornLineEdit.text(), newfile)
                 newfile.write('\n')
-                json.dump(self.CellDiesLineEdit.text(), newfile)    
+                json.dump(self.CellDiesLineEdit.text(), newfile)   
+                json.dump(MainWindow.last_rules_preset,newfile)
                 self.RulePresetsComboBox.setCurrentIndex(self.RulePresetsComboBox.findText(filename))
+                
       
     def DeleteRulesPreset(self):
         choice = QtGui.QMessageBox.question(self, 'Delete preset: '+ self.RulePresetsComboBox.currentText(), "Are you sure?",
@@ -479,13 +477,14 @@ class RuleEditorWidget( Ui_RuleEditorWidget, MainWindow):
             os.remove("RulePresets\\"+self.RulePresetsComboBox.currentText())
             self.RulePresetsComboBox.removeItem(self.RulePresetsComboBox.currentIndex())
             
-    
     def UpdateRules(self): #w razie zmiany, zladuj nowe ustawienia
         with open("RulePresets\\"+self.RulePresetsComboBox.currentText(), 'r') as readfile: 
             MainWindow.RulesTabBorn, MainWindow.RulesTabDies = [json.loads(line) for line in readfile ]
         self.CellBornLineEdit.setText(MainWindow.RulesTabBorn)
         self.CellDiesLineEdit.setText(MainWindow.RulesTabDies)
-    
+    def closeEvent(self, event):
+        MainWindow.last_rules_preset=self.RulePresetsComboBox.currentText()
+        self.close()
 if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
     ui = MainWindow()

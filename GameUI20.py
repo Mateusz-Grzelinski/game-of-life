@@ -82,7 +82,7 @@ class Ui_MainWindow():
         font = QtGui.QFont()
         font.setPointSize(12)
         self.ChoicePresets.setFont(font)
-        self.ChoicePresets.setEditable(True)
+        self.ChoicePresets.setEditable(False)
         self.ChoicePresets.setFrame(True)
         self.ChoicePresets.setObjectName(_fromUtf8("ChoicePresets"))
         self.horizontalLayout_2.addWidget(self.ChoicePresets)
