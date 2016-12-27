@@ -69,7 +69,7 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         super(MainWindow,self).__init__()
         self.setupUi(self)
         self.retranslateUi(self)
-        self.last_rules_preset="Normal"
+        self.last_rules_preset="Normal" #czemu nie laduje za pierwszym razem?
         self.generation = 0
         self.rows       = 10
         self.columns    = 10
@@ -90,7 +90,7 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         BOXES = [ [CellItem(self.cel_size*j,self.cel_size*i,self.cel_size,self.cel_size, i, j) for j in range(self.columns)] for i in range(self.rows)]
         self.DrawGrid()
         
-       # self.LoadPresetsNames()
+        self.LoadPresetsNames()
         self.RemovePreset.clicked.connect(self.DeletePreset)
         self.SaveState.clicked.connect(self.SavePreset)
         self.ChoicePresets.activated.connect(self.ReadPreset)
@@ -110,31 +110,38 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         #self.graphicsView.setSceneRect(self.graphicsScene.itemsBoundingRect())
         self.ScaleIn.clicked.connect(self.scaleViewIn)
         self.ScaleOut.clicked.connect(self.scaleViewOut)
-    #def LoadPresetsNames(self): #add presets to ComboBox
-    #    for file in os.listdir("GamePresets"):
-    #        self.RulePresetsComboBox.addItem(os.path.splitext(file)[0])  #nazwy plikow bez rozszerzen
+    def LoadPresetsNames(self): #add presets to ComboBox
+        for file in os.listdir("GamePresets"):
+            self.ChoicePresets.addItem(os.path.splitext(file)[0])  #nazwy plikow bez rozszerzen
     def SavePreset(self):
         filename, ok = QtGui.QInputDialog.getText(self, 'Save Game Preset', 'Enter preset name:')
         flag=True 
-        if ok and filename!='' and not ('.' in filename):   #jesli wprowadzono dane
-            for file in os.listdir("GamePresets"):          #sprawdz czy plik juz istnieje
-                if filename in os.path.splitext(file)[0] :
-                    flag=False
-                    msg = QtGui.QMessageBox()
-                    msg.setIcon(QtGui.QMessageBox.Warning)
-                    msg.setWindowTitle("Error!")
-                    msg.setText("Preset not saved!\n\
-                                File with this name arleady exsists or name specified incorrectly")
-                    msg.Ok
-                    msg.exec_()
-                    break
-        if flag: #jesli plik nie istnieje to zapisz
+        if ok:
+            if (len(filename)==1 or ('.' in filename)): #sprawdz czy nazwa wprowadzona jest dobrze
+                flag=False
+                msg = QtGui.QMessageBox()
+                msg.setIcon(QtGui.QMessageBox.Warning)
+                msg.setWindowTitle("Error!")
+                msg.setText("Preset not saved!\nFile name specified incorrectly")
+                msg.Ok
+                msg.exec_()    
+            else: #sprawdz czy plik juz istnieje
+                for file in os.listdir("GamePresets"):
+                    if filename in os.path.splitext(file)[0] :
+                        flag=False
+                        msg = QtGui.QMessageBox()
+                        msg.setIcon(QtGui.QMessageBox.Warning)
+                        msg.setWindowTitle("Error!")
+                        msg.setText("Preset not saved!\nFile with this name arleady exsists ")
+                        msg.Ok
+                        msg.exec_()
+                        break
+        if flag: 
             global BOXES
             self.ChoicePresets.addItem(filename)
             self.ChoicePresets.setCurrentIndex(self.ChoicePresets.findText(filename))
             with open("GamePresets\\"+filename, 'w') as newfile:
                 status = [[json.dumps(BOXES[i][j]._status) for i in range(self.rows)] for j in range(self.columns)]
-                plag   = [[json.dumps(BOXES[i][j]._plag)   for i in range(self.rows)] for j in range(self.columns)]
                 json.dump(self.rows, newfile)
                 newfile.write('\n')
                 json.dump(self.columns, newfile)
@@ -146,6 +153,7 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
                 json.dump(self.PlagueCheckBox.isChecked(), newfile)
                 newfile.write('\n') 
                 if self.PlagueCheckBox.isChecked() :
+                    plag   = [[json.dumps(BOXES[i][j]._plag)   for i in range(self.rows)] for j in range(self.columns)]
                     json.dump(plag, newfile)
                     
     def ReadPreset(self):
@@ -153,34 +161,38 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         with open("GamePresets\\"+self.ChoicePresets.currentText(), 'r') as readfile: 
             self.rows   = json.loads( readfile.readline() ) #ilosc wierszy 
             self.columns= json.loads( readfile.readline() ) #ilosc kolumn
-            
-            if( json.loads( readfile.readline() ) ): #status: self.RowsColumsCheckBox.isChecked()
-                self.RowsColumsCheckBox.setChecked()
-                self.ColumnsSpinBox.setValue(self.columns)
+            self.RowsColumsCheckBox.setChecked( json.loads( readfile.readline() ))
+            #self.RowsSpinBox.setProperty("value", self.rows)
+            if self.RowsColumsCheckBox.isChecked() :
                 self.RowsSpinBox.setValue(self.rows)
             else:
-                self.RowsColumsCheckBox.setCheckState(False)
-                self.ColumnsSpinBox.setValue(self.columns)
                 self.RowsSpinBox.setValue(self.rows)
-                
+                self.ColumnsSpinBox.setValue(self.columns)
+            self.UpdateValues()
+            
             tmp = json.loads( readfile.readline() ) #status komorek(tablica)
-            BOXES = [ [CellItem(self.cel_size*j,self.cel_size*i,self.cel_size,self.cel_size, i, j) for j in range(self.columns)] for i in range(self.rows)]
             for i in range(self.rows):
                 for j in range(self.columns):
-                    BOXES[i][j]._status = tmp[i][j]
-                    BOXES[i][j]._prev   = tmp[i][j]
-                    
-            if json.loads( readfile.readline() ): #wczytuje status checkboxa do plagi
-                self.PlagueCheckBox.setChecked()
-                self.PlagRandomActivate()
+                    if tmp[i][j]=="true" :
+                        BOXES[i][j]._status = True
+                        BOXES[i][j]._status_prev   = True
+                    else:
+                        BOXES[i][j]._status = False
+                        BOXES[i][j]._status_prev   = False
+            self.PlagueCheckBox.setChecked( json.loads( readfile.readline() )) #wczytuje status checkboxa do plagi
+            self.PlagRandomActivate() #aktywuje lub dezaktywuje plage
+            if self.PlagueCheckBox.isChecked() :
                 tmp=json.loads( readfile.readline() ) #wczytuje tablice plagi
                 for i in range(self.rows):
                     for j in range(self.columns):
-                        BOXES[i][j]._plag = tmp[i][j]
-            else:
-                self.PlagueCheckBox.setCheckState(False)
-                self.PlagRandomActivate()
-        self.DrawGrid() #zmienia ustawienia rows, columns, rysuje siatke i kolory
+                        if tmp[i][j]=="true" :
+                            BOXES[i][j]._plag = True
+                            BOXES[i][j]._plag_prev   = True
+                        else:
+                            BOXES[i][j]._plag = False
+                            BOXES[i][j]._plag_prev   = False
+        self.DrawChange() #zmienia ustawienia rows, columns, rysuje siatke i kolory
+        
     def DeletePreset(self):
         choice = QtGui.QMessageBox.question(self, 'Delete preset: '+ self.ChoicePresets.currentText(), "Are you sure?",
                                             QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
@@ -238,10 +250,10 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         self.LGeneration.setText("Generation: "+str(self.generation) )
         for i in range(self.rows):
             for j in range(self.columns):
-                BOXES[i][j]._status =       BOXES[i][j]._backup_gen
-                BOXES[i][j]._status_prev =  BOXES[i][j]._backup_gen
-                BOXES[i][j]._plag =         BOXES[i][j]._backup_gen_plag
-                BOXES[i][j]._plag_prev =    BOXES[i][j]._backup_gen_plag
+                BOXES[i][j]._status     = BOXES[i][j]._backup_gen
+                BOXES[i][j]._status_prev= BOXES[i][j]._backup_gen
+                BOXES[i][j]._plag       = BOXES[i][j]._backup_gen_plag
+                BOXES[i][j]._plag_prev  = BOXES[i][j]._backup_gen_plag
         self.DrawChange()
         
     def UpdateValues(self):
@@ -446,7 +458,8 @@ class RuleEditorWidget( Ui_RuleEditorWidget, MainWindow):
     def AddRulesPresetPopup(self):
         filename, ok = QtGui.QInputDialog.getText(self, 'Save Rule Preset', 'Enter preset name:')
         flag=True 
-        if ok and filename!='' and not ('.' in filename): #jesli wprowadzono dane
+        '''
+        if ok and len(filename)!=1 and not ('.' in filename): #jesli wprowadzono dane
             for file in os.listdir("RulePresets"): #sprawdz czy plik juz istnieje
                 if filename in os.path.splitext(file)[0] :
                     flag=False
@@ -454,10 +467,31 @@ class RuleEditorWidget( Ui_RuleEditorWidget, MainWindow):
                     msg.setIcon(QtGui.QMessageBox.Warning)
                     msg.setWindowTitle("Error!")
                     msg.setText("Preset not saved!\n\
-                                File with this name arleady exsists or name specified incorrectly")
+File with this name arleady exsists or name specified incorrectly")
                     msg.Ok
                     msg.exec_()
                     break
+        '''
+        if ok:
+            if (len(filename)==1 or ('.' in filename)): #sprawdz czy nazwa wprowadzona jest dobrze
+                flag=False
+                msg = QtGui.QMessageBox()
+                msg.setIcon(QtGui.QMessageBox.Warning)
+                msg.setWindowTitle("Error!")
+                msg.setText("Preset not saved!\nFile name specified incorrectly")
+                msg.Ok
+                msg.exec_()    
+            else: #sprawdz czy plik juz istnieje
+                for file in os.listdir("GamePresets"):
+                    if filename in os.path.splitext(file)[0] :
+                        flag=False
+                        msg = QtGui.QMessageBox()
+                        msg.setIcon(QtGui.QMessageBox.Warning)
+                        msg.setWindowTitle("Error!")
+                        msg.setText("Preset not saved!\nFile with this name arleady exsists ")
+                        msg.Ok
+                        msg.exec_()
+                        break
         if flag: #jesli plik nie istnieje to zapisz
             self.RulePresetsComboBox.addItem(filename)
             with open("RulePresets\\"+filename, 'w') as newfile:
