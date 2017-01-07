@@ -140,7 +140,7 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
             global BOXES
             self.ChoicePresets.addItem(filename)
             self.ChoicePresets.setCurrentIndex(self.ChoicePresets.findText(filename))
-            with open("GamePresets\\"+filename, 'w') as newfile:
+            with open("GamePresets/"+filename, 'w') as newfile:
                 status = [[json.dumps(BOXES[i][j]._status) for i in range(self.rows)] for j in range(self.columns)]
                 json.dump(self.rows, newfile)
                 newfile.write('\n')
@@ -158,7 +158,7 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
                     
     def ReadPreset(self):
         global BOXES
-        with open("GamePresets\\"+self.ChoicePresets.currentText(), 'r') as readfile: 
+        with open("GamePresets/"+self.ChoicePresets.currentText(), 'r') as readfile: 
             self.rows   = json.loads( readfile.readline() ) #ilosc wierszy 
             self.columns= json.loads( readfile.readline() ) #ilosc kolumn
             self.RowsColumsCheckBox.setChecked( json.loads( readfile.readline() ))
@@ -198,7 +198,7 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
                                             QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
         if choice == QtGui.QMessageBox.Yes:
             print("Deleting current preset...",self.ChoicePresets.currentText())
-            os.remove("GamePresets\\"+self.ChoicePresets.currentText())
+            os.remove("GamePresets/"+self.ChoicePresets.currentText())
             self.ChoicePresets.removeItem(self.ChoicePresets.currentIndex())
     def UpdateFPS(self):    
         self.fps = 1000/self.FPSSpinBox.value()
@@ -494,7 +494,7 @@ File with this name arleady exsists or name specified incorrectly")
                         break
         if flag: #jesli plik nie istnieje to zapisz
             self.RulePresetsComboBox.addItem(filename)
-            with open("RulePresets\\"+filename, 'w') as newfile:
+            with open("RulePresets/"+filename, 'w') as newfile:
                 print(json.dumps( self.CellBornLineEdit.text() ) )
                 json.dump(self.CellBornLineEdit.text(), newfile)
                 newfile.write('\n')
@@ -508,11 +508,11 @@ File with this name arleady exsists or name specified incorrectly")
                                             QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
         if choice == QtGui.QMessageBox.Yes:
             print("Deleting current preset...",self.RulePresetsComboBox.currentText())
-            os.remove("RulePresets\\"+self.RulePresetsComboBox.currentText())
+            os.remove("RulePresets/"+self.RulePresetsComboBox.currentText())
             self.RulePresetsComboBox.removeItem(self.RulePresetsComboBox.currentIndex())
             
     def UpdateRules(self): #w razie zmiany, zladuj nowe ustawienia
-        with open("RulePresets\\"+self.RulePresetsComboBox.currentText(), 'r') as readfile: 
+        with open("RulePresets/"+self.RulePresetsComboBox.currentText(), 'r') as readfile: 
             MainWindow.RulesTabBorn, MainWindow.RulesTabDies = [json.loads(line) for line in readfile ]
         self.CellBornLineEdit.setText(MainWindow.RulesTabBorn)
         self.CellDiesLineEdit.setText(MainWindow.RulesTabDies)
