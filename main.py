@@ -69,6 +69,10 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         super(MainWindow,self).__init__()
         self.setupUi(self)
         self.retranslateUi(self)
+        if (not os.path.exists("GamePresets/")):
+            os.mkdir("GamePresets/")
+        if (not os.path.exists("RulePresets/")):
+            os.mkdir("RulePresets/")
         self.last_rules_preset="Normal" #czemu nie laduje za pierwszym razem?
         self.generation = 0
         self.rows       = 10
@@ -458,20 +462,7 @@ class RuleEditorWidget( Ui_RuleEditorWidget, MainWindow):
     def AddRulesPresetPopup(self):
         filename, ok = QtGui.QInputDialog.getText(self, 'Save Rule Preset', 'Enter preset name:')
         flag=True 
-        '''
-        if ok and len(filename)!=1 and not ('.' in filename): #jesli wprowadzono dane
-            for file in os.listdir("RulePresets"): #sprawdz czy plik juz istnieje
-                if filename in os.path.splitext(file)[0] :
-                    flag=False
-                    msg = QtGui.QMessageBox()
-                    msg.setIcon(QtGui.QMessageBox.Warning)
-                    msg.setWindowTitle("Error!")
-                    msg.setText("Preset not saved!\n\
-File with this name arleady exsists or name specified incorrectly")
-                    msg.Ok
-                    msg.exec_()
-                    break
-        '''
+
         if ok:
             if (len(filename)==1 or ('.' in filename)): #sprawdz czy nazwa wprowadzona jest dobrze
                 flag=False
@@ -482,7 +473,7 @@ File with this name arleady exsists or name specified incorrectly")
                 msg.Ok
                 msg.exec_()    
             else: #sprawdz czy plik juz istnieje
-                for file in os.listdir("GamePresets"):
+                for file in os.listdir("RulePresets"):
                     if filename in os.path.splitext(file)[0] :
                         flag=False
                         msg = QtGui.QMessageBox()
