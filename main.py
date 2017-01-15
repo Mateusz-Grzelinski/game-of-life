@@ -6,7 +6,7 @@ Created on Thu Dec 15 20:36:13 2016
 import sys, os, json
 from time import clock
 from random import randint
-from PyQt4 import QtOpenGL
+#from PyQt4 import QtOpenGL
 from PyQt4 import QtGui, QtCore
 from GameUI20 import Ui_MainWindow
 from WindowRules1 import Ui_RuleEditorWidget
@@ -89,7 +89,7 @@ class MainWindow(QtGui.QMainWindow,  Ui_MainWindow):
         self.graphicsScene = QtGui.QGraphicsScene()
         self.graphicsScene.setSceneRect(0,0,400,300)
         self.graphicsView.setScene(self.graphicsScene)
-        self.graphicsView.setViewport(QtOpenGL.QGLWidget()) #obliczenia na karcie graficznej- nie zmienia duzo
+#        self.graphicsView.setViewport(QtOpenGL.QGLWidget()) #obliczenia na karcie graficznej- nie zmienia duzo
         #init cells:
         BOXES = [ [CellItem(self.cel_size*j,self.cel_size*i,self.cel_size,self.cel_size, i, j) for j in range(self.columns)] for i in range(self.rows)]
         self.DrawGrid()
