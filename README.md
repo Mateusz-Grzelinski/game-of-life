@@ -8,7 +8,7 @@ Projekt porzucony.
 
 # Zależności
   - pyqt4
-  - 
+  
 # Uruchamianie
 ```bash 
   python main.py
