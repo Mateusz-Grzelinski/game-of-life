@@ -1,6 +1,3 @@
-
-Disclaimer: this was my first python project, it is far from perfect
-
 # Game of life  (John Conway)
 
 Features:
